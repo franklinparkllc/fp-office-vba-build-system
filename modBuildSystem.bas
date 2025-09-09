@@ -632,13 +632,13 @@ Private Sub ApplyDesign(formObj As Object, design As Object)
     Debug.Print "Design keys count: " & design.Count
     
     ' Basic properties
-    If design.Exists("caption") Then 
+    If design.Exists("caption") Then
         Debug.Print "Setting caption: " & design("caption")
         formObj.Caption = design("caption")
         Debug.Print "Caption set successfully"
     End If
     
-    If design.Exists("width") Then 
+    If design.Exists("width") Then
         Dim widthVal As Long
         widthVal = CLng(design("width")) * 20
         Debug.Print "Setting width: " & design("width") & " points (" & widthVal & " twips)"
@@ -646,7 +646,7 @@ Private Sub ApplyDesign(formObj As Object, design As Object)
         Debug.Print "Width set successfully"
     End If
     
-    If design.Exists("height") Then 
+    If design.Exists("height") Then
         Dim heightVal As Long
         heightVal = CLng(design("height")) * 20
         Debug.Print "Setting height: " & design("height") & " points (" & heightVal & " twips)"
