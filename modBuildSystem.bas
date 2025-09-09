@@ -2,7 +2,7 @@ Attribute VB_Name = "modBuildSystem"
 ' =====================================================================================
 ' VBA APPLICATION BUILDER - SIMPLIFIED BUILD SYSTEM
 ' =====================================================================================
-' Version: 0.0.5 - Fixed control positioning and user feedback
+' Version: 0.0.7 - Fixed control positioning and user feedback
 '
 ' This simplified build system focuses on core functionality:
 ' • Direct form creation via code (no export/import complexity)
@@ -510,52 +510,25 @@ Private Function CreateFormDirect(formName As String, appPath As String) As Bool
     Set formComp = vbProj.VBComponents.Add(vbext_ct_MSForm)
     Debug.Print "UserForm created with name: " & formComp.Name
     
-    Debug.Print "Renaming form to: " & formName
-    Debug.Print "Current form name: " & formComp.Name
-    
-    ' Try multiple renaming strategies
-    Dim renameSuccess As Boolean
-    renameSuccess = False
-    
-    ' Strategy 1: Direct rename
+    ' RENAME STRATEGY: Use the .Properties("Name") collection for reliability
+    ' This is more robust than a direct .Name assignment, which often fails.
     On Error Resume Next
-    formComp.Name = formName
-    If Err.Number = 0 And formComp.Name = formName Then
-        renameSuccess = True
-        Debug.Print "✅ Direct rename successful"
-    Else
-        Debug.Print "⚠️ Direct rename failed: " & Err.Number & " - " & Err.Description
+    formComp.Properties("Name").Value = formName
+    If Err.Number <> 0 Then
+        Debug.Print "⚠️ Properties('Name') rename failed. Falling back to direct assignment."
         Err.Clear
+        formComp.Name = formName ' Fallback attempt
     End If
     On Error GoTo ErrorHandler
     
-    ' Strategy 2: If direct rename failed, try via VBComponents collection
-    If Not renameSuccess Then
-        Debug.Print "Trying rename via VBComponents collection..."
-        On Error Resume Next
-        Dim tempName As String
-        tempName = formComp.Name
-        vbProj.VBComponents(tempName).Name = formName
-        If Err.Number = 0 Then
-            renameSuccess = True
-            Debug.Print "✅ Collection rename successful"
-        Else
-            Debug.Print "⚠️ Collection rename failed: " & Err.Number & " - " & Err.Description
-            Err.Clear
-        End If
-        On Error GoTo ErrorHandler
-    End If
-    
-    ' Strategy 3: If still failed, continue with original name (this is normal and OK)
-    If Not renameSuccess Then
-        Debug.Print "ℹ️ Form created with auto-generated name: " & formComp.Name
-        Debug.Print "ℹ️ To use the intended name '" & formName & "':"
-        Debug.Print "ℹ️   1. Save your document (Ctrl+S)"
-        Debug.Print "ℹ️   2. In VBA Editor, right-click '" & formComp.Name & "' and select Properties"
-        Debug.Print "ℹ️   3. Change the Name from '" & formComp.Name & "' to '" & formName & "'"
-        Debug.Print "ℹ️ This is normal VBA behavior - the form works perfectly as-is!"
-    Else
+    ' Verify rename and provide feedback
+    If formComp.Name = formName Then
         Debug.Print "✅ Form renamed successfully to: " & formComp.Name
+    Else
+        Debug.Print "ℹ️ Form created with auto-generated name: " & formComp.Name
+        Debug.Print "ℹ️ To use the intended name '" & formName & "', please save the document (Ctrl+S), " & _
+                    "then right-click '" & formComp.Name & "' in the Project Explorer and manually rename it."
+        Debug.Print "ℹ️ This is a known VBE limitation, but the form will still work as " & formComp.Name & "."
     End If
     
     ' Load design (use the original formName for path, regardless of actual form name)
@@ -606,13 +579,8 @@ Private Function CreateFormDirect(formName As String, appPath As String) As Bool
     Debug.Print "✅ CreateFormDirect completed successfully"
     Debug.Print "Final form name: " & formComp.Name
     
-    ' Provide user guidance regardless of rename success
-    If Not renameSuccess Then
-        Debug.Print "📋 FORM READY: Use " & formComp.Name & ".Show to display the form"
-        Debug.Print "📋 Or manually rename to '" & formName & "' and use " & formName & ".Show"
-    Else
-        Debug.Print "📋 FORM READY: Use " & formName & ".Show to display the form"
-    End If
+    ' Provide user guidance based on final name
+    Debug.Print "📋 FORM READY: Use " & formComp.Name & ".Show to display the form"
     
     CreateFormDirect = True
     Exit Function
@@ -638,21 +606,10 @@ Private Sub ApplyDesign(formObj As Object, design As Object)
         Debug.Print "Caption set successfully"
     End If
     
-    If design.Exists("width") Then
-        Dim widthVal As Long
-        widthVal = CLng(design("width")) * 20
-        Debug.Print "Setting width: " & design("width") & " points (" & widthVal & " twips)"
-        formObj.Width = widthVal
-        Debug.Print "Width set successfully"
-    End If
-    
-    If design.Exists("height") Then
-        Dim heightVal As Long
-        heightVal = CLng(design("height")) * 20
-        Debug.Print "Setting height: " & design("height") & " points (" & heightVal & " twips)"
-        formObj.Height = heightVal
-        Debug.Print "Height set successfully"
-    End If
+    ' Apply dimensions
+    If design.Exists("width") Then formObj.Width = CLng(design("width"))
+    If design.Exists("height") Then formObj.Height = CLng(design("height"))
+    Debug.Print "Dimensions set: Width=" & formObj.Width & ", Height=" & formObj.Height
     
     ' Create controls
     If design.Exists("controls") Then
@@ -720,62 +677,25 @@ Private Sub CreateSingleControl(formObj As Object, controlDict As Object)
     ctrlName = "Control1"
     ctrlType = "CommandButton"
     
-    If controlDict.Exists("name") Then 
-        ctrlName = controlDict("name")
-        Debug.Print "Control name: " & ctrlName
-    End If
-    
-    If controlDict.Exists("type") Then 
-        ctrlType = controlDict("type")
-        Debug.Print "Control type: " & ctrlType
-    End If
-    
-    If controlDict.Exists("caption") Then 
-        caption = controlDict("caption")
-        Debug.Print "Control caption: " & caption
-    End If
+    If controlDict.Exists("name") Then ctrlName = controlDict("name")
+    If controlDict.Exists("type") Then ctrlType = controlDict("type")
+    If controlDict.Exists("caption") Then caption = controlDict("caption")
+    Debug.Print "Control properties: Name=" & ctrlName & ", Type=" & ctrlType
     
     ' Create the control
-    Debug.Print "Creating control with type: " & GetControlType(ctrlType)
     Dim ctrl As Object
     Set ctrl = formObj.Controls.Add(GetControlType(ctrlType), ctrlName)
-    Debug.Print "Control created successfully: " & ctrl.Name
+    Debug.Print "Control created: " & ctrl.Name
     
     ' Apply properties
-    If caption <> "" Then 
-        ctrl.Caption = caption
-        Debug.Print "Caption applied: " & caption
-    End If
+    If caption <> "" Then ctrl.Caption = caption
     
     ' Apply positioning with validation
-    If controlDict.Exists("left") And IsNumeric(controlDict("left")) Then 
-        ctrl.Left = CLng(controlDict("left"))
-        Debug.Print "Left position set: " & controlDict("left")
-    Else
-        Debug.Print "⚠️ No valid left position, using default (0)"
-    End If
-    
-    If controlDict.Exists("top") And IsNumeric(controlDict("top")) Then 
-        ctrl.Top = CLng(controlDict("top"))
-        Debug.Print "Top position set: " & controlDict("top")
-    Else
-        Debug.Print "⚠️ No valid top position, using default (0)"
-    End If
-    
-    If controlDict.Exists("width") And IsNumeric(controlDict("width")) Then 
-        ctrl.Width = CLng(controlDict("width"))
-        Debug.Print "Width set: " & controlDict("width")
-    Else
-        Debug.Print "⚠️ No valid width, using default"
-    End If
-    
-    If controlDict.Exists("height") And IsNumeric(controlDict("height")) Then 
-        ctrl.Height = CLng(controlDict("height"))
-        Debug.Print "Height set: " & controlDict("height")
-    Else
-        Debug.Print "⚠️ No valid height, using default"
-    End If
-    
+    If controlDict.Exists("left") Then ctrl.Left = CLng(controlDict("left"))
+    If controlDict.Exists("top") Then ctrl.Top = CLng(controlDict("top"))
+    If controlDict.Exists("width") Then ctrl.Width = CLng(controlDict("width"))
+    If controlDict.Exists("height") Then ctrl.Height = CLng(controlDict("height"))
+
     Debug.Print "Final control position: Left=" & ctrl.Left & ", Top=" & ctrl.Top & ", Width=" & ctrl.Width & ", Height=" & ctrl.Height
     
     Debug.Print "✅ Single control creation completed"
@@ -877,29 +797,62 @@ End Function
 ' Force project state save to persist form properties
 Private Sub ForceProjectStateSave()
     On Error Resume Next
-    
     Debug.Print "=== Forcing Project State Save ==="
+
+    Dim thisProject As Object
+    Set thisProject = GetVBProject()
+    If thisProject Is Nothing Then
+        Debug.Print "⚠️ Could not get current VBProject to save."
+        Exit Sub
+    End If
+
+    ' Directly get the host document (Workbook, Document, etc.) from the project
+    Dim hostDoc As Object
+    Set hostDoc = thisProject.Parent
     
-    ' This works for documents (Word, Excel)
-    If Not Application.ActiveDocument Is Nothing Then
-        If Not Application.ActiveDocument.Saved Then
-            Application.ActiveDocument.Save
-            Debug.Print "Host document saved."
-        Else
-            Debug.Print "Host document was already saved, no save needed."
-        End If
+    If hostDoc Is Nothing Then
+        Debug.Print "⚠️ Could not get host document from VBProject.Parent."
+        Exit Sub
+    End If
+    
+    ' Check if the document has a path. If not, it can't be saved.
+    If hostDoc.Path = "" Then
+        Debug.Print "⚠️ Host document has not been saved yet. Please save it first."
+        Exit Sub
+    End If
+
+    If Not hostDoc.Saved Then
+        hostDoc.Save
+        Debug.Print "Host document saved: " & hostDoc.Name
+    Else
+        Debug.Print "Host document was already saved."
     End If
     
     If Err.Number <> 0 Then
         Debug.Print "⚠️ Could not save document. Error: " & Err.Number & " - " & Err.Description
         Err.Clear
     End If
-    
     On Error GoTo 0
 End Sub
 
 ' Get VBA project
 Private Function GetVBProject() As Object
+    On Error Resume Next
+    
+    Dim vbProj As Object
+    Dim vbComp As Object
+    
+    For Each vbProj In Application.VBE.VBProjects
+        For Each vbComp In vbProj.VBComponents
+            If vbComp.Name = "modBuildSystem" Then
+                Set GetVBProject = vbProj
+                Exit Function
+            End If
+        Next vbComp
+    Next vbProj
+    
+    ' Fallback to active project if module not found (shouldn't happen)
+    Debug.Print "GetVBProject: Could not find project containing 'modBuildSystem'. Falling back to ActiveVBProject."
     Set GetVBProject = Application.VBE.ActiveVBProject
 End Function
 
