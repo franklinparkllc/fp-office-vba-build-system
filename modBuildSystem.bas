@@ -2,7 +2,7 @@ Attribute VB_Name = "modBuildSystem"
 ' =====================================================================================
 ' VBA APPLICATION BUILDER - SIMPLIFIED BUILD SYSTEM
 ' =====================================================================================
-' Version: 0.0.8 - Fixed control positioning and user feedback
+' Version: 0.1.0 - Refactored form creation for reliability
 '
 ' This simplified build system focuses on core functionality:
 ' • Direct form creation via code (no export/import complexity)
@@ -22,6 +22,13 @@ Attribute VB_Name = "modBuildSystem"
 ' =====================================================================================
 
 Option Explicit
+
+' Win32 API for waiting
+#If VBA7 Then
+    Public Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As LongPtr)
+#Else
+    Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
+#End If
 
 ' =====================================================================================
 ' MODULE VARIABLES
@@ -194,18 +201,17 @@ Private Function ParseJSON(jsonText As String) As Object
     Set dict = CreateObject("Scripting.Dictionary")
     Debug.Print "Dictionary created"
     
-    ' Extract simple string values
+    ' Extract values for manifest.json and design.json
     dict("name") = ExtractValue(jsonText, "name")
-    Debug.Print "Name extracted: " & dict("name")
-    
     dict("version") = ExtractValue(jsonText, "version")
-    Debug.Print "Version extracted: " & dict("version")
-    
     dict("modules") = ExtractValue(jsonText, "modules")
-    Debug.Print "Modules extracted: " & dict("modules")
-    
     dict("forms") = ExtractValue(jsonText, "forms")
-    Debug.Print "Forms extracted: " & dict("forms")
+    dict("caption") = ExtractValue(jsonText, "caption")
+    dict("width") = ExtractValue(jsonText, "width")
+    dict("height") = ExtractValue(jsonText, "height")
+    dict("startUpPosition") = ExtractValue(jsonText, "startUpPosition")
+    
+    Debug.Print "Extracted - Name: " & dict("name") & ", Caption: " & dict("caption")
     
     ' Extract references array
     Dim refsText As String
@@ -508,10 +514,32 @@ Private Function CreateFormDirect(formName As String, appPath As String) As Bool
     Debug.Print "Creating new UserForm component..."
     Dim formComp As Object
     Set formComp = vbProj.VBComponents.Add(vbext_ct_MSForm)
-    Debug.Print "UserForm created with name: " & formComp.Name
+    Debug.Print "UserForm created with temporary name: " & formComp.Name
     
-    ' RENAME STRATEGY: Use the .Properties("Name") collection for reliability
-    ' This is more robust than a direct .Name assignment, which often fails.
+    ' STEP 1: Apply design and controls to the new form FIRST.
+    ' This makes the form "dirty" and more likely to accept a name change.
+    Dim designPath As String
+    designPath = appPath & "\forms\" & formName & "\design.json"
+    Debug.Print "Design path: " & designPath
+    
+    If Dir(designPath) <> "" Then
+        Dim design As Object
+        Set design = LoadJSON(designPath)
+        If Not design Is Nothing Then
+            ' Pass the component itself, not the designer
+            Call ApplyDesign(formComp, design)
+        Else
+            Debug.Print "❌ Failed to parse design JSON"
+        End If
+    Else
+        Debug.Print "⚠️ No design file found at: " & designPath
+    End If
+    
+    ' STEP 2: PAUSE to let the VBE process the new form and its design changes.
+    DoEvents
+    Sleep 500 ' Wait 500 milliseconds
+    
+    ' STEP 3: Now, attempt the RENAME.
     On Error Resume Next
     formComp.Properties("Name").Value = formName
     If Err.Number <> 0 Then
@@ -525,45 +553,19 @@ Private Function CreateFormDirect(formName As String, appPath As String) As Bool
     If formComp.Name = formName Then
         Debug.Print "✅ Form renamed successfully to: " & formComp.Name
     Else
-        Debug.Print "ℹ️ Form created with auto-generated name: " & formComp.Name
-        Debug.Print "ℹ️ To use the intended name '" & formName & "', please save the document (Ctrl+S), " & _
-                    "then right-click '" & formComp.Name & "' in the Project Explorer and manually rename it."
-        Debug.Print "ℹ️ This is a known VBE limitation, but the form will still work as " & formComp.Name & "."
+        Debug.Print "ℹ️ Form rename failed. Final name is: " & formComp.Name
+        Debug.Print "ℹ️ This is a known VBE limitation. The form will still work as " & formComp.Name & "."
     End If
     
-    ' Load design (use the original formName for path, regardless of actual form name)
-    Dim designPath As String
-    designPath = appPath & "\forms\" & formName & "\design.json"
-    Debug.Print "Design path: " & designPath
-    
-    If Dir(designPath) <> "" Then
-        Debug.Print "Design file found, loading..."
-        Dim design As Object
-        Set design = LoadJSON(designPath)
-        If Not design Is Nothing Then
-            Debug.Print "Design JSON loaded successfully"
-            Debug.Print "Applying design to form..."
-            Call ApplyDesign(formComp.Designer, design)
-            Debug.Print "Design applied successfully"
-        Else
-            Debug.Print "❌ Failed to parse design JSON"
-        End If
-    Else
-        Debug.Print "⚠️ No design file found at: " & designPath
-    End If
-    
-    ' Load code-behind
+    ' STEP 4: Add code-behind.
     Dim codePath As String
     codePath = appPath & "\forms\" & formName & "\code-behind.vba"
     Debug.Print "Code-behind path: " & codePath
     
     If Dir(codePath) <> "" Then
-        Debug.Print "Code-behind file found, loading..."
         Dim codeContent As String
         codeContent = ReadTextFile(codePath)
         If codeContent <> "" Then
-            Debug.Print "Code content loaded, length: " & Len(codeContent)
-            Debug.Print "Adding code to form module..."
             formComp.CodeModule.AddFromString codeContent
             Debug.Print "Code-behind added successfully"
         Else
@@ -573,7 +575,7 @@ Private Function CreateFormDirect(formName As String, appPath As String) As Bool
         Debug.Print "⚠️ No code-behind file found at: " & codePath
     End If
     
-    ' Force save to persist form state changes
+    ' STEP 5: Force save to persist all changes.
     Call ForceProjectStateSave
     
     Debug.Print "✅ CreateFormDirect completed successfully"
@@ -587,34 +589,41 @@ Private Function CreateFormDirect(formName As String, appPath As String) As Bool
     
 ErrorHandler:
     Debug.Print "❌ ERROR in CreateFormDirect: " & Err.Number & " - " & Err.Description
-    Debug.Print "Error occurred at line in CreateFormDirect"
     CreateFormDirect = False
 End Function
 
 ' Apply design to form
-Private Sub ApplyDesign(formObj As Object, design As Object)
+Private Sub ApplyDesign(formComp As Object, design As Object)
     On Error GoTo DesignError
     
     Debug.Print "=== ApplyDesign Debug ==="
-    Debug.Print "Design object type: " & TypeName(design)
-    Debug.Print "Design keys count: " & design.Count
     
-    ' Basic properties
-    If design.Exists("caption") Then
-        Debug.Print "Setting caption: " & design("caption")
-        formObj.Caption = design("caption")
-        Debug.Print "Caption set successfully"
+    ' Use the component's .Properties collection for robustness
+    If design.Exists("caption") And design("caption") <> "" Then
+        formComp.Properties("Caption").Value = design("caption")
+        Debug.Print "Caption set: " & formComp.Properties("Caption").Value
     End If
     
-    ' Apply dimensions
-    If design.Exists("width") Then formObj.Width = CLng(design("width"))
-    If design.Exists("height") Then formObj.Height = CLng(design("height"))
-    Debug.Print "Dimensions set: Width=" & formObj.Width & ", Height=" & formObj.Height
+    ' Sizing - The designer properties use points (Single data type)
+    If design.Exists("width") And IsNumeric(design("width")) Then
+        formComp.Properties("Width").Value = CSng(design("width"))
+    End If
+    If design.Exists("height") And IsNumeric(design("height")) Then
+        formComp.Properties("Height").Value = CSng(design("height"))
+    End If
+    Debug.Print "Dimensions set: Width=" & formComp.Properties("Width").Value & ", Height=" & formComp.Properties("Height").Value
     
-    ' Create controls
+    ' Positioning
+    If design.Exists("startUpPosition") And IsNumeric(design("startUpPosition")) Then
+        formComp.Properties("StartUpPosition").Value = CInt(design("startUpPosition"))
+        Debug.Print "Startup Position set: " & formComp.Properties("StartUpPosition").Value
+    End If
+    
+    ' Create controls on the form's designer
     If design.Exists("controls") Then
         Debug.Print "Controls found in design, creating..."
-        Call CreateControls(formObj, design("controls"))
+        ' Note: We pass the .Designer to CreateControls
+        Call CreateControls(formComp.Designer, design("controls"))
         Debug.Print "Controls creation completed"
     Else
         Debug.Print "No controls found in design"

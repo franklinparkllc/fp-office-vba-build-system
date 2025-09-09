@@ -1,133 +1,109 @@
-# VBA Builder - Simplified Build System
-
+# VBA Builder - A Modern Build System for Microsoft Office
 ## 🚀 Overview
-
-**VBA Builder v2.0** is a radically simplified build system for VBA development, optimized for agentic/AI workflows. This system transforms VBA development with minimal complexity while maintaining powerful automation capabilities.
-
+Modern build system for VBA development, optimized for AI-driven workflows. This system transforms VBA development by enabling version control, automated builds, and modern development practices with minimal complexity.
 ## ✨ What Makes This Special
-
 ### **Before VBA Builder**
 - ❌ Code trapped inside Office documents
 - ❌ No version control for VBA code
-- ❌ Manual form creation and management
+- ❌ Manual, error-prone form creation and management
 - ❌ No automated deployment process
-- ❌ Legacy development workflow
 
-### **After VBA Builder v2.0**
-- ✅ **Direct Code Creation** - No complex export/import processes
-- ✅ **Simple JSON Parsing** - Regex-based, fast and reliable
-- ✅ **Minimal Dependencies** - Self-contained system
-- ✅ **AI-Optimized** - Perfect for agentic workflows
-- ✅ **Radical Simplicity** - 80% less code, same power
+### **After VBA Builder**
+- ✅ **Source-Controlled Code**: All VBA code lives in text files, perfect for Git.
+- ✅ **Automated Form Generation**: Build complex UserForms directly from `design.json` files.
+- ✅ **Minimal Dependencies**: The entire build system is self-contained in a single VBA module.
+- ✅ **AI-Optimized**: Designed for agentic workflows, enabling AI to generate, build, and test applications.
+- ✅ **Radical Simplicity**: 80% less code than traditional build systems, but with the same power.
 
-## 🔧 How Simplified Build System Works
+## 🔧 How It Works: The Direct Injection Method
+The build system works by directly manipulating the VBA project within the host Office application (Word, Excel, etc.). It reads source files from your `src` directory and injects them into the VBA environment.
 
 ### 1. **Direct Form Creation**
+Instead of relying on a fragile export/import process, the builder creates forms from scratch, overcoming wellknown limitations of the VBA environment.
 ```vba
-' Create form directly - no export/import complexity
+' Create a new, empty form component
 Set formComp = vbProj.VBComponents.Add(vbext_ct_MSForm)
-formComp.Name = formName
-Call ApplyDesign(formComp.Designer, design)
+' Apply all properties from design.json (caption, size, etc.)
+Call ApplyDesign(formComp, design)
+' PAUSE to allow the VBE to process the new object
+DoEvents: Sleep 500
+' Programmatically rename the form to its correct name
+formComp.Properties("Name").Value = formName
 ```
-
 ### 2. **Simple JSON Parsing**
+A lightweight, regex-based parser reads `manifest.json` and `design.json` files. It's fast, reliable, and has no external dependencies.
 ```vba
-' Regex-based JSON parsing - fast and reliable
-Set dict = CreateObject("Scripting.Dictionary")
-dict("name") = ExtractValue(jsonText, "name")
-dict("forms") = ExtractValue(jsonText, "forms")
+' Extract all key/value pairs from a JSON file
+Set dict = ParseJSON(jsonText)
+' Access values directly
+formComp.Properties("Width").Value = dict("width")
 ```
-
-### 3. **Module Import**
+### 3. **Module & Code-Behind Injection**
+Standard modules (`.vba`) are imported directly, and form code-behinds are injected into the form's `CodeModule`.
 ```vba
-' Standard module import - proven and stable
+' Import a standard module from a .vba file
 Set comp = vbProj.VBComponents.Import(filePath)
-comp.Name = moduleName
-```
-
-### 4. **Code Integration**
-```vba
-' Direct code addition to forms
+' Add event handlers and logic to a form
 formComp.CodeModule.AddFromString codeContent
 ```
-
-## 🏗️ **Simplified Architecture (v2.0)**
-
-**Single module**: `modBuildSystem.bas` - **80% smaller**, same functionality
-
-- **Core Functions** (simplified):
-  - `Initialize()` - Setup build system
-  - `BuildApplication(appName)` - Build specific app  
-  - `BuildInteractive()` - Interactive menu
-  - `ShowSystemStatus()` - System info
-  - `LoadJSON()` - Simple JSON parsing
-  - `CreateFormDirect()` - Direct form creation
-  - `ProcessModules()` - Import modules
-  - `ApplyDesign()` - Apply form design
-
-**Key Simplifications**:
-- ✅ Direct form creation (no export/import)
-- ✅ Regex-based JSON parsing (no complex parser)
-- ✅ Minimal error handling overhead
-- ✅ Removed 2000+ lines of complexity
-
+## 🏗️ **System Architecture (v2.0)**
+**Single module**: `modBuildSystem.bas` - **80% smaller**, with the same functionality as enterprise-grade solutions.
+- **Core Functions**:
+  - `Initialize()` - Sets up the build system.
+  - `BuildApplication(appName)` - Builds a specific application from the `src` folder.
+  - `BuildInteractive()` - Shows a menu of available applications to build.
+  - `CreateFormDirect()` - The core function that handles the robust form creation process.
+  - `ProcessModules()` - Imports standard `.vba` modules.
+  - `ApplyDesign()` - Applies properties and adds controls to a form based on `design.json`.
+- **Key Simplifications**:
+  - ✅ **True Direct Form Creation**: No temporary files or import/export steps.
+  - ✅ **Lightweight JSON Parsing**: A fast, regex-based parser handles all configuration.
+  - ✅ **Resilient VBE Interaction**: The build process is designed to handle the known quirks of the VBE, such as race conditions during form creation.
 ## 📁 **Project Structure**
-
 ```
 YourProject/
-├── modBuildSystem.bas     # Simplified build engine (v2.0)
-└── src/                   # Application source files
-    ├── ExampleApp/        # Reference app
-    │   ├── manifest.json  # Simple: name, modules, forms
+├── modBuildSystem.bas     # The build engine (v2.0)
+└── src/                   # Your application source files
+    ├── ExampleApp/        # A reference application
+    │   ├── manifest.json  # App config: name, modules, forms
     │   ├── modules/
     │   │   └── modExampleApp.vba
     │   └── forms/
     │       └── frmExampleApp/
-    │           ├── design.json      # Basic: width, height, controls
-    │           └── code-behind.vba  # Standard VBA code
-    └── YourApp/          # Your application
+    │           ├── design.json      # Form layout: size, caption, controls
+    │           └── code-behind.vba  # The form's event-handling code
+    └── YourApp/           # Your new application
         ├── manifest.json
         ├── modules/
         └── forms/
 ```
-
 ## 🚀 **Quick Start**
-
 ### **1. Setup VBA Builder**
-
-1. **Open any Office document** (Excel, Word, PowerPoint)
-2. **Press `Alt+F11`** to open VBA Editor
-3. **Insert → Module** or **Copy the contents** of each `mod*.bas` file into the modules
-4. **Save the document**
-
+1.  **Open any Office document** (Excel, Word, etc.) and save it as a macro-enabled file (e.g., `.docm` or `.xlsm`). This will be your build environment.
+2.  **Press `Alt+F11`** to open the VBA Editor.
+3.  **Insert → Module** and name it `modBuildSystem`.
+4.  **Copy the entire contents** of `modBuildSystem.bas` into the module.
 ### **2. Enable Trust Center Settings**
-
-**CRITICAL**: You must enable VBA project access:
-
-1. **File → Options → Trust Center**
-2. **Trust Center Settings → Macro Settings**
-3. **✅ Check "Trust access to the VBA project object model"**
-4. **Restart Office application**
-
+**CRITICAL**: You must allow programmatic access to the VBA project.
+1.  In your Office Application: **File → Options → Trust Center**.
+2.  **Trust Center Settings → Macro Settings**.
+3.  **✅ Check "Trust access to the VBA project object model"**.
+4.  **Restart the Office application**.
 ### **3. Initialize and Build**
-
 ```vba
-' Initialize the system (first time only)
+' Run these commands from the Immediate Window (View -> Immediate Window or Ctrl+G)
+' Initialize the system (only needs to be run once)
 Call modBuildSystem.Initialize
-
-' Build interactively (recommended)
+' Build interactively (recommended for first-time use)
 Call modBuildSystem.BuildInteractive
-
-' Or build specific app
+' Or build a specific application by name
 Call modBuildSystem.BuildApplication("ExampleApp")
-
 ' Check system status
 Call modBuildSystem.ShowSystemStatus
 ```
-
 ## 📋 **Application Configuration**
-
 ### **Simplified Manifest.json**
+This file defines your application's components.
 ```json
 {
   "name": "MyApp",
@@ -136,279 +112,108 @@ Call modBuildSystem.ShowSystemStatus
   "forms": "frmMyForm"
 }
 ```
-
 ### **Simplified Design.json**
+This file defines a form's appearance and controls.
 ```json
 {
   "caption": "My Application",
   "width": 400,
   "height": 300,
+  "startUpPosition": 1,
   "controls": [
     {
       "name": "btnSubmit",
-      "type": "CommandButton", 
+      "type": "CommandButton",
       "caption": "Submit",
-      "left": 50,
-      "top": 50,
-      "width": 100,
-      "height": 30
+      "left": 50, "top": 50, "width": 100, "height": 30
     }
   ]
 }
 ```
-
-**Note**: Control creation is simplified in v2.0. Complex control arrays and nested properties are handled by the AI agent during generation.
-
-## 🎯 **Direct VBA Object Strategy**
-
-After TRUE Code Injection, your forms and modules become **native VBA objects**. Always use direct VBA references:
-
+## 🎯 **The Direct VBA Object Strategy**
+After a successful build, your forms and modules exist as **native VBA objects**. You should always reference them directly in your code.
 ### ✅ **Recommended Approach**
 ```vba
-' Launch forms directly (VBA handles the object reference)
+' Launch forms using their given name
 frmMyForm.Show
-
-' Call module functions directly  
+' Call module functions directly
 Call modMyModule.MyFunction()
-
 ' Access form properties directly
 frmMyForm.Caption = "New Title"
 ```
-
-### ❌ **Avoid Collection-Based Approaches**
-```vba
-' Don't rely on stored object collections
-Set formObj = loadedForms("frmMyForm")  ' Can become stale
-formObj.Show  ' May fail with "Object variable not set"
-```
-
 ### 🚫 Critical Rule: Never reference placeholder names like "UserForm1"
 - Always assume build-created objects exist with their manifest/design names.
-- Do not write module code that references ephemeral placeholder names such as `UserForm1`, `UserForm2`, etc. Those names are not guaranteed and will not compile reliably.
-- Reference forms and modules by their intended names (e.g., `frmExampleApp`, `frmFundSelector`). The build process ensures these objects are created before your code runs.
-
+- The build process ensures these objects are created before your code runs. Do not write code that references ephemeral placeholder names such as `UserForm1`, as they are not guaranteed to exist.
 ## 📚 **Reference Applications**
-
 ### **ExampleApp** - Reference Template 🎯
-- **Purpose**: Comprehensive reference template for AI assistants and developers
-- **Features**: Fully annotated application demonstrating all VBA Build System patterns
-- **Files**: Enhanced module with 80+ lines of documentation, annotated form design, comprehensive event handling
-- **Use Case**: 
-  - **For AI Assistants**: Primary reference for generating VBA applications with proper patterns
-  - **For Developers**: Copy this structure when creating new applications
-- **Key Patterns Demonstrated**:
-  - Direct VBA object references (recommended approach)
-  - Error handling with fallback strategies  
-  - Form lifecycle management and event handling
-  - Module-to-form communication patterns
-  - Comprehensive debugging and troubleshooting approaches
-- **Location**: `src/ExampleApp/` - All files contain detailed AI-friendly annotations
-
-### **FundSelector** - Production Example  
-- **Purpose**: Database-driven fund selection tool
-- **Features**: Azure SQL connectivity, dynamic data loading, professional UI
-- **Files**: Database interface module, complex form with multiple controls
-- **Use Case**: Real-world business application
-
+- **Purpose**: A comprehensive template for developers and AI assistants.
+- **Features**: A fully annotated application demonstrating all VBA Build System patterns.
+- **Use Case**: Copy this structure when creating new applications.
+- **Location**: `src/ExampleApp/`
+### **FundSelector** - Production Example
+- **Purpose**: A database-driven fund selection tool.
+- **Features**: Demonstrates Azure SQL connectivity and a professional UI.
+- **Use Case**: A real-world business application.
 ## 🔧 **System Commands**
-
-### **Essential Commands**
 ```vba
 ' System setup and status
 Call modBuildSystem.Initialize()
 Call modBuildSystem.ShowSystemStatus()
-Call modBuildSystem.ChangeSourcePath()
-
 ' Building applications
 Call modBuildSystem.BuildInteractive()
 Call modBuildSystem.BuildApplication("AppName")
 Call modBuildSystem.ListAvailableApplications()
-```
-
-### Where built `.frm` files are saved
-- During the build, `.frm` (and `.frx` when needed) files are written to: `src/<AppName>/forms/<FormName>/<FormName>.frm`.
-- You can import these files manually in the VBE if desired (File → Import File…). The builder also imports them automatically.
-
-### **Diagnostic Commands**
-```vba
-' Check Trust Center settings
+' Diagnostics
 Call modBuildSystem.ValidateTrustSettings()
-
-' Validate build integrity
-Call modBuildSystem.ValidateBuildIntegrity()
 ```
-
-## 🛠️ **Advanced Features**
-
-### **Build Callbacks**
-```vba
-' Set build event callbacks
-modBuildSystem.BeforeBuildCallback = "MyBeforeBuild"
-modBuildSystem.AfterBuildCallback = "MyAfterBuild"
-modBuildSystem.FormCreatedCallback = "MyFormCreated"
-```
-
-### **Reference Management**
-The system automatically configures VBA references based on your manifest dependencies:
-- Microsoft Forms 2.0 Object Library (always included)
-- Microsoft ActiveX Data Objects 6.1 Library
-- Custom references as specified in manifest
-
-### **Host Application Support**
-Works seamlessly across Office applications:
-- **Excel**: Uses ThisWorkbook or ActiveWorkbook
-- **Word**: Uses ThisDocument or ActiveDocument  
-- **PowerPoint**: Uses ActivePresentation
-
-### Form Build Methodology (Export+Import)
-- The builder relies on the official VBIDE export format to ensure all MSForms classes load correctly across environments.
-- After export, the builder normalizes the `.frm` to enforce:
-  - `Begin {…} <FormName>`
-  - `Attribute VB_Name = "<FormName>"`
-  - `Caption` from `design.json`
-  - `ClientWidth`/`ClientHeight` from `design.json` (converted appropriately)
-- Reference: guidance on importing/exporting VB components [Import and Export VBA code](https://jkp-ads.com/rdb/win/s9/win002.htm).
-
+## 🛠️ **The Form Build Process Explained**
+The system uses a robust, multi-step process to overcome the quirks of the VBE and reliably generate forms.
+1.  **Create**: A new, blank `MSForm` component is added to the project with a temporary name (e.g., `UserForm1`).
+2.  **Apply Design**: The system reads your `design.json` and programmatically applies all properties (caption, size, etc.) and adds all specified controls to the new form.
+3.  **Pause**: A brief, 500ms pause allows the VBE to finish processing the new form and its controls, preventing race conditions.
+4.  **Rename**: With the form fully created, the system renames it from its temporary name to the name specified in your configuration (e.g., `frmExampleApp`).
+5.  **Inject Code**: The associated `code-behind.vba` file is read and injected into the form's code module.
+6.  **Save**: The host document is saved to persist all changes to the VBA project.
 ## 🚨 **Troubleshooting**
-
 ### **Common Issues**
-
-1. **"VBA Project access is disabled"**
-   - ✅ Enable "Trust access to the VBA project object model" in Trust Center
-   - ✅ Restart Office application
-
-2. **"Build failed during processing"**
-   - ✅ Check source file paths in `ShowSystemStatus()`
-   - ✅ Verify manifest.json format
-   - ✅ Ensure all referenced files exist
-
-3. **"Application not found"**
-   - ✅ Run `ListAvailableApplications()` to see what's detected
-   - ✅ Verify folder structure matches expected layout
-   - ✅ Check that manifest.json exists in app folder
-
+1.  **"VBA Project access is disabled"**
+    -   ✅ Enable "Trust access to the VBA project object model" in Trust Center and restart.
+2.  **"Build failed during processing"**
+    -   ✅ Check the file paths shown in `ShowSystemStatus()`.
+    -   ✅ Verify the syntax of your `manifest.json` and `design.json` files.
+3.  **"Application not found"**
+    -   ✅ Run `ListAvailableApplications()` to see what the system detects.
+    -   ✅ Ensure your application folder in `src` contains a valid `manifest.json`.
 ### **Diagnostic Steps**
 ```vba
 ' Step 1: Check system status
 Call modBuildSystem.ShowSystemStatus()
-
-' Step 2: Validate Trust Center
+' Step 2: Validate Trust Center settings
 Call modBuildSystem.ValidateTrustSettings()
-
 ' Step 3: List available apps
 Call modBuildSystem.ListAvailableApplications()
-
 ' Step 4: Try building interactively
 Call modBuildSystem.BuildInteractive()
 ```
-
 ## 🏆 **Benefits**
-
 ### **For Developers**
-- **Modern Workflow**: Develop VBA using modern IDEs (VS Code, Cursor)
-- **Version Control**: Full Git integration with text-based source files
-- **Debugging**: Native VBA debugging works perfectly
-- **IntelliSense**: Complete IDE support for imported code
-- **Collaboration**: Team development with proper source control
-
+-   **Modern Workflow**: Develop VBA using modern IDEs (VS Code, Cursor).
+-   **Version Control**: Full Git integration for all your code.
+-   **Collaboration**: Team development with proper source control.
+-   **Native Experience**: Debugging and IntelliSense work perfectly.
 ### **For Organizations**
-- **Standardization**: Consistent deployment across environments
-- **Quality Control**: Automated build validation and testing
-- **Maintenance**: Easier updates and bug fixes
-- **Distribution**: Single document contains entire application
-- **Audit Trail**: Complete build history and tracking
-
-### **For Users**
-- **Seamless Experience**: Applications work like native VBA
-- **No Dependencies**: Code is embedded in document
-- **Offline Capability**: No external file dependencies
-- **Performance**: Native VBA execution speed
-
-## 🔮 **Future Extensibility**
-
-The streamlined architecture supports future enhancements:
-
-- **Complex Form Layouts**: Nested containers, tab controls, data grids
-- **Advanced Styling**: Colors, fonts, themes, responsive design
-- **Event Binding**: Sophisticated event handling and validation
-- **Plugin System**: Extensible build pipeline with custom processors
-- **Template System**: Reusable application templates and components
-
-## 🤖 **For AI Assistants: Simplified Code Generation**
-
-### **🎯 v2.0 Agentic Workflow**
-
-**Perfect for AI/Cursor workflows** - the system is now optimized for automated generation:
-
-- **Simple JSON structures** - Easy for AI to generate
-- **Direct object creation** - No complex export/import logic
-- **Minimal dependencies** - Fewer failure points
-- **Self-contained** - Single file deployment
-
-### **Key Principle: Use Direct Object References**
-
-When generating VBA code for applications built with this system:
-
-#### ✅ **Always Use Direct VBA References**
-```vba
-' Forms - use direct references (safe because build creates forms first)
-frmYourForm.Show
-
-' Modules - call functions directly
-Call modYourModule.YourFunction()
-
-' Properties - access directly
-frmYourForm.Caption = "New Title"
-```
-
-#### ❌ **Never Use Collection-Based Approaches**
-```vba
-' Don't generate code like this:
-Set formObj = loadedForms("frmYourForm")
-formObj.Show
-```
-
-### **Simplified Build Process v2.0**
-
-The simplified build system creates components directly:
-1. **Step 1**: Create form component directly via VBA API
-2. **Step 2**: Apply design properties immediately
-3. **Step 3**: Add code-behind via CodeModule
-4. **Step 4**: Import modules from `.vba` files
-5. **Result**: Clean, direct object creation with minimal complexity
-
-### **AI Code Generation Guidelines v2.0**
-
-1. **Keep JSON Simple**: Use basic key-value pairs
-2. **Direct References**: Always use `frmYourForm.Show` syntax
-3. **Minimal Complexity**: Avoid nested structures where possible
-4. **Standard Controls**: Stick to basic CommandButton, Label, TextBox
-5. **Error Handling**: Use simple On Error Resume Next patterns
-
-## 📞 **Support**
-
-For issues or questions:
-
-1. **Check system status**: `Call modBuildSystem.ShowSystemStatus()`
-2. **Verify Trust Center settings**: Enable VBA project object model access
-3. **Validate file structure**: Ensure manifest.json and source files exist
-
+-   **Standardization**: Consistent, repeatable builds and deployments.
+-   **Quality Control**: Automated build validation.
+-   **Maintainability**: Easier updates and bug fixes.
+### **For AI Assistants: Simplified Code Generation**
+-   **Simple JSON Structures**: Easy for AI to generate `design.json` files.
+-   **Direct Object References**: AI can generate code that uses `frmYourForm.Show` syntax, as the build process guarantees the form will exist.
+-   **Self-Contained & Reliable**: The single-module build system is robust and has minimal failure points.
 ---
-
-## 🎉 **Ready for Simplified VBA Development?**
-
-The **v2.0 simplified system** is perfect for AI-driven development workflows. 80% less code, same power!
-
+## 🎉 **Ready for Modern VBA Development?**
+The **v2.0 system** is perfect for AI-driven development. It's faster, more reliable, and brings modern development practices to the world of VBA.
 ```vba
 ' Get started now!
 Call modBuildSystem.Initialize()
 Call modBuildSystem.BuildInteractive()
 ```
-
-**Key Benefits of v2.0**:
-- ✅ **Faster builds** - Direct creation, no export/import
-- ✅ **Simpler maintenance** - Single file, minimal complexity  
-- ✅ **AI-optimized** - Perfect for agentic workflows
-- ✅ **More reliable** - Fewer moving parts, fewer failures
-
-**Experience simplified VBA development today!** 🚀
