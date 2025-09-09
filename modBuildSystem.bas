@@ -2,7 +2,7 @@ Attribute VB_Name = "modBuildSystem"
 ' =====================================================================================
 ' VBA APPLICATION BUILDER - SIMPLIFIED BUILD SYSTEM
 ' =====================================================================================
-' Version: 0.0.4 - Fixed control positioning and user feedback
+' Version: 0.0.5 - Fixed control positioning and user feedback
 '
 ' This simplified build system focuses on core functionality:
 ' • Direct form creation via code (no export/import complexity)
@@ -600,6 +600,9 @@ Private Function CreateFormDirect(formName As String, appPath As String) As Bool
         Debug.Print "⚠️ No code-behind file found at: " & codePath
     End If
     
+    ' Force save to persist form state changes
+    Call ForceProjectStateSave
+    
     Debug.Print "✅ CreateFormDirect completed successfully"
     Debug.Print "Final form name: " & formComp.Name
     
@@ -870,6 +873,30 @@ End Function
 ' =====================================================================================
 ' UTILITY FUNCTIONS
 ' =====================================================================================
+
+' Force project state save to persist form properties
+Private Sub ForceProjectStateSave()
+    On Error Resume Next
+    
+    Debug.Print "=== Forcing Project State Save ==="
+    
+    ' This works for documents (Word, Excel)
+    If Not Application.ActiveDocument Is Nothing Then
+        If Not Application.ActiveDocument.Saved Then
+            Application.ActiveDocument.Save
+            Debug.Print "Host document saved."
+        Else
+            Debug.Print "Host document was already saved, no save needed."
+        End If
+    End If
+    
+    If Err.Number <> 0 Then
+        Debug.Print "⚠️ Could not save document. Error: " & Err.Number & " - " & Err.Description
+        Err.Clear
+    End If
+    
+    On Error GoTo 0
+End Sub
 
 ' Get VBA project
 Private Function GetVBProject() As Object
