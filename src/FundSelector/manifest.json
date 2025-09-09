@@ -1,0 +1,24 @@
+{
+  "name": "FundSelector",
+  "version": "1.0.0",
+  "description": "GP Fund Selection Tool",
+  "author": "VBA Build System",
+  "target": "Office",
+  "entryPoint": "modDBInterface.OpenFundSelector",
+  "modules": "modDBInterface",
+  "forms": "frmFundSelector",
+  "dependencies": {
+    "references": [
+      "Microsoft ActiveX Data Objects 6.1 Library",
+      "Microsoft Forms 2.0 Object Library"
+    ]
+  },
+  "build": {
+    "outputPath": "build/generated",
+    "deploymentPath": "build/deployment"
+  },
+  "commands": {
+    "launch": "modDBInterface.OpenFundSelector",
+    "test": "modDBInterface.TestConnection"
+  }
+} 
