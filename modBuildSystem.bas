@@ -2,7 +2,7 @@ Attribute VB_Name = "modBuildSystem"
 ' =====================================================================================
 ' VBA APPLICATION BUILDER - SIMPLIFIED BUILD SYSTEM
 ' =====================================================================================
-' Version: 0.0.7 - Fixed control positioning and user feedback
+' Version: 0.0.8 - Fixed control positioning and user feedback
 '
 ' This simplified build system focuses on core functionality:
 ' • Direct form creation via code (no export/import complexity)
