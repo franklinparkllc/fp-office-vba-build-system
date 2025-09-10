@@ -1,40 +1,95 @@
 {
-  "name": "frmFundSelector",
-  "caption": "Fund Selection - Minimal",
-  "width": 450,
-  "height": 400,
-  "startUpPosition": "CenterOwner",
+  "form": {
+    "name": "frmFundSelector",
+    "caption": "Fund Selection Tool - VBA Build System",
+    "width": 500,
+    "height": 450,
+    "startUpPosition": 1
+  },
   "controls": [
     {
       "name": "lblTitle",
       "type": "Label",
-      "caption": "General Partner List",
+      "caption": "General Partner Fund Selection",
       "left": 20,
       "top": 20,
-      "width": 400,
-      "height": 24,
+      "width": 450,
+      "height": 30,
       "font": {
+        "name": "Segoe UI",
         "size": 14,
         "bold": true
+      }
+    },
+    {
+      "name": "lblDescription",
+      "type": "Label",
+      "caption": "Select a General Partner from the list below to view their fund information.",
+      "left": 20,
+      "top": 50,
+      "width": 450,
+      "height": 40,
+      "font": {
+        "name": "Segoe UI",
+        "size": 9,
+        "bold": false
       }
     },
     {
       "name": "lstGeneralPartners",
       "type": "ListBox",
       "left": 20,
-      "top": 50,
-      "width": 400,
-      "height": 300,
-      "multiSelect": "fmMultiSelectSingle"
+      "top": 100,
+      "width": 450,
+      "height": 250,
+      "multiSelect": "fmMultiSelectSingle",
+      "font": {
+        "name": "Segoe UI",
+        "size": 9,
+        "bold": false
+      }
+    },
+    {
+      "name": "btnRefresh",
+      "type": "CommandButton",
+      "caption": "Refresh List",
+      "left": 20,
+      "top": 370,
+      "width": 100,
+      "height": 30,
+      "font": {
+        "name": "Segoe UI",
+        "size": 9,
+        "bold": false
+      }
+    },
+    {
+      "name": "btnTestConnection",
+      "type": "CommandButton",
+      "caption": "Test Connection",
+      "left": 130,
+      "top": 370,
+      "width": 120,
+      "height": 30,
+      "font": {
+        "name": "Segoe UI",
+        "size": 9,
+        "bold": false
+      }
     },
     {
       "name": "btnClose",
       "type": "CommandButton",
       "caption": "Close",
-      "left": 340,
-      "top": 360,
+      "left": 390,
+      "top": 370,
       "width": 80,
-      "height": 30
+      "height": 30,
+      "font": {
+        "name": "Segoe UI",
+        "size": 9,
+        "bold": false
+      }
     }
   ]
 } 
