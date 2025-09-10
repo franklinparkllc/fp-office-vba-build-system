@@ -46,33 +46,37 @@ Set comp = vbProj.VBComponents.Import(filePath)
 ' Add event handlers and logic to a form
 formComp.CodeModule.AddFromString codeContent
 ```
-## 🏗️ **System Architecture (v1.0 - Refactored)**
-**Two-module design**: Clean separation of build logic and utilities for better maintainability.
+## 🏗️ **System Architecture (v1.0 - Simplified)**
+**Two-module design**: Dead simple user experience with powerful features under the hood.
+
+### **👤 User Experience - Just 2 Functions!**
+```vba
+Call Initialize()    ' Setup (one-time, opens folder picker)
+Call Build()         ' Build apps (shows menu, auto-initializes)
+```
 
 ### **modBuildSystem.bas** - Core Build Engine
-- **Primary Functions**:
-  - `Initialize()` - Sets up the build system
-  - `BuildApplication(appName)` - Builds a specific application from the `src` folder
-  - `BuildInteractive()` - Shows a menu of available applications to build
-  - `CreateFormDirect()` - The core function that handles robust form creation
-  - `ProcessModules()` - Imports standard `.vba` modules
-  - `ApplyDesign()` - Applies properties and adds controls to forms
-- **JSON Processing**:
-  - `ParseJSON()` - Lightweight parser for manifest and design files
-  - Simplified extraction functions for strings, numbers, and arrays
+- **🎯 User Functions**:
+  - `Initialize()` - One-time setup with folder picker
+  - `Build()` - Shows available apps, builds selected one
+  - `BuildApplication(appName)` - Direct build for specific app
+  - `ShowSystemStatus()` - Check current configuration
+- **🔧 Internal Engine**:
+  - `CreateFormDirect()` - Robust form creation with new schema support
+  - `ProcessModules()` - Module importing
+  - `ApplyDesign()` - Form design application with improved JSON parsing
 
 ### **modBuilderUtils.bas** - Utility Functions
-- **File Operations**: `ReadTextFile()` - Safe file reading with error handling
-- **VBA Project Management**: `GetVBProject()`, `RemoveComponent()`, `ForceProjectStateSave()`
-- **Configuration**: `GetSourcePath()`, `SaveSourcePath()`, `PromptForSourcePath()`
-- **System Info**: `ShowSystemStatus()`, `GetAvailableApps()`, `ValidateTrustSettings()`
+- **File & Project Management**: Safe file I/O, VBA project manipulation
+- **Configuration Management**: Persistent settings, path validation
+- **System Validation**: Trust settings, folder scanning, error handling
 
-### **Key Improvements**:
-- ✅ **Modular Design**: Clean separation of concerns between build logic and utilities
-- ✅ **Simplified JSON Parsing**: Streamlined parser with 50% less code
-- ✅ **Reduced Debug Overhead**: Essential logging only, improved performance
-- ✅ **Consistent Error Handling**: Unified approach across all functions
-- ✅ **Better Maintainability**: Functions focused on single responsibilities
+### **🚀 Key Features**:
+- ✅ **Dead Simple**: 2-function user experience
+- ✅ **Auto-Initialization**: Build functions set up automatically
+- ✅ **Persistent Settings**: Set source path once, works forever
+- ✅ **New JSON Schema**: Clean separation of form properties and controls
+- ✅ **Folder Picker**: No typing file paths
 ## 📁 **Project Structure**
 ```
 YourProject/
@@ -106,17 +110,21 @@ YourProject/
 2.  **Trust Center Settings → Macro Settings**.
 3.  **✅ Check "Trust access to the VBA project object model"**.
 4.  **Restart the Office application**.
-### **3. Initialize and Build**
+### **3. Start Building! (Dead Simple)**
 ```vba
-' Run these commands from the Immediate Window (View -> Immediate Window or Ctrl+G)
-' Initialize the system (only needs to be run once)
-Call modBuildSystem.Initialize
-' Build interactively (recommended for first-time use)
-Call modBuildSystem.BuildInteractive
-' Or build a specific application by name
-Call modBuildSystem.BuildApplication("ExampleApp")
-' Check system status
-Call ShowSystemStatus
+' Open the Immediate Window (View -> Immediate Window or Ctrl+G) and run:
+
+' First time setup (opens folder picker)
+Call Initialize()
+
+' Build apps (shows menu, auto-setup if needed)
+Call Build()
+
+' Optional: Direct build
+Call BuildApplication("ExampleApp")
+
+' Optional: Check status
+Call ShowSystemStatus()
 ```
 ## 📋 **Application Configuration**
 ### **Simplified Manifest.json**
@@ -129,24 +137,33 @@ This file defines your application's components.
   "forms": "frmMyForm"
 }
 ```
-### **Simplified Design.json**
-This file defines a form's appearance and controls.
+### **New Design.json Schema (v1.0)**
+Clean separation between form properties and controls.
 ```json
 {
-  "caption": "My Application",
-  "width": 400,
-  "height": 300,
-  "startUpPosition": 1,
+  "form": {
+    "name": "frmMyApp",
+    "caption": "My Application", 
+    "width": 400,
+    "height": 300,
+    "startUpPosition": 1
+  },
   "controls": [
     {
       "name": "btnSubmit",
-      "type": "CommandButton",
+      "type": "CommandButton", 
       "caption": "Submit",
       "left": 50, "top": 50, "width": 100, "height": 30
     }
   ]
 }
 ```
+
+**🎯 Why the new schema?**
+- ✅ **No Conflicts**: Form width/height separate from control dimensions
+- ✅ **AI-Friendly**: Clear structure for code generation  
+- ✅ **Future-Proof**: Easy to add form-level properties
+- ✅ **Self-Documenting**: Obvious what belongs where
 ## 🎯 **The Direct VBA Object Strategy**
 After a successful build, your forms and modules exist as **native VBA objects**. You should always reference them directly in your code.
 ### ✅ **Recommended Approach**
@@ -173,14 +190,16 @@ frmMyForm.Caption = "New Title"
 - **Use Case**: A real-world business application.
 ## 🔧 **System Commands**
 ```vba
-' System setup and status
-Call Initialize()
-Call ShowSystemStatus()
-' Building applications  
-Call BuildInteractive()
-Call BuildApplication("AppName")
-' Diagnostics
-Call ValidateTrustSettings()
+' 🎯 Essential (98% of use cases)
+Call Initialize()                    ' Setup/change source folder (folder picker)
+Call Build()                         ' Show menu, build selected app
+
+' 🔧 Direct commands  
+Call BuildApplication("AppName")     ' Build specific app directly
+Call ShowSystemStatus()              ' Check current configuration
+
+' 🔍 Diagnostics (if needed)
+Call ValidateTrustSettings()         ' Check VBA project access
 ```
 ## 🛠️ **The Form Build Process Explained**
 The system uses a robust, multi-step process to overcome the quirks of the VBE and reliably generate forms.
@@ -204,10 +223,12 @@ The system uses a robust, multi-step process to overcome the quirks of the VBE a
 ```vba
 ' Step 1: Check system status
 Call ShowSystemStatus()
-' Step 2: Validate Trust Center settings
+' Step 2: Validate Trust Center settings  
 Call ValidateTrustSettings()
-' Step 3: Try building interactively
-Call BuildInteractive()
+' Step 3: Try building with menu
+Call Build()
+' Step 4: Re-setup if needed
+Call Initialize()
 ```
 ## 🏆 **Benefits**
 ### **For Developers**
@@ -225,9 +246,16 @@ Call BuildInteractive()
 -   **Modular & Reliable**: The two-module build system is well-organized with clear separation of concerns.
 ---
 ## 🎉 **Ready for Modern VBA Development?**
-The **refactored v1.0 system** is perfect for AI-driven development. It's cleaner, more maintainable, and brings modern development practices to the world of VBA.
+The **simplified v1.0 system** is perfect for everyone - from beginners to AI assistants. Just 2 commands to get started!
+
 ```vba
-' Get started now!
-Call Initialize()
-Call BuildInteractive()
+' Dead simple workflow:
+Call Initialize()    ' Pick your source folder (one-time)
+Call Build()         ' Build your apps (menu-driven)
 ```
+
+**Perfect for:**
+- 🤖 **AI Code Generation** - Clean schema and simple commands
+- 👨‍💻 **Developers** - Modern workflow with version control
+- 🏢 **Organizations** - Standardized, repeatable builds
+- 📚 **Learning** - Clear patterns and comprehensive examples

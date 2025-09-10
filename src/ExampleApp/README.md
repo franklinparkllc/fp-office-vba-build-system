@@ -42,7 +42,7 @@ When generating VBA applications, **ALWAYS** reference this template:
 ## 📋 Manifest Configuration
 
 ### **Required Fields Only**
-The JSON parser only supports these fields:
+The JSON parser supports these fields:
 
 ```json
 {
@@ -58,13 +58,34 @@ The JSON parser only supports these fields:
 }
 ```
 
-### **Additional Documentation Fields**
-While these can't be in the actual manifest.json (parser limitations), document them here:
+### **New Design.json Schema (v1.0)**
 
-- **Description**: "Reference template application demonstrating VBA build system patterns"
-- **Author**: "VBA Build System"
-- **Purpose**: "This is a reference template for AI assistants and developers"
-- **Usage**: "Copy this structure when creating new VBA applications"
+**🚀 Updated Schema**: Clean separation between form and control properties
+
+```json
+{
+  "form": {
+    "name": "frmYourApp",
+    "caption": "Your Application Title",
+    "width": 450,
+    "height": 300,
+    "startUpPosition": 1
+  },
+  "controls": [
+    {
+      "name": "btnAction",
+      "type": "CommandButton",
+      "caption": "Click Me",
+      "left": 50, "top": 50, "width": 100, "height": 30
+    }
+  ]
+}
+```
+
+**Benefits:**
+- ✅ **No Conflicts**: Form dimensions separate from control dimensions
+- ✅ **AI-Friendly**: Clear structure for code generation
+- ✅ **Parser-Safe**: No ambiguity in property extraction
 
 ## 🎨 Form Design Patterns
 
@@ -158,20 +179,22 @@ frmExampleApp.Show    ' Form exists when this code runs
 
 ## ⚠️ Build System Compatibility
 
-### **JSON Parser Limitations**
+### **JSON Parser Features**
 
-The current JSON parser has these limitations:
+The v1.0 JSON parser supports:
 
-1. **No comment fields**: `_comment`, `_patterns`, `_ai_notes` cause errors
-2. **Limited field support**: Only recognizes specific predefined fields
-3. **No arbitrary properties**: Custom documentation fields break parsing
+1. **New Schema Support**: Handles both `form: {}` and legacy formats
+2. **Robust Property Extraction**: Clean separation of form vs control properties  
+3. **Error-Resistant**: Graceful handling of missing or malformed fields
+4. **Auto-Detection**: Automatically detects design file format
 
-### **Workarounds**
+### **Best Practices**
 
-1. **Keep JSON files clean** - no comments or extra fields
+1. **Use the new schema** - `{"form": {}, "controls": []}` format  
 2. **Document patterns in README** files (like this one)
 3. **Use comprehensive code comments** in VBA files
 4. **Include pattern explanations** in module headers
+5. **Test with simple apps first** before complex builds
 
 ## 🚀 Usage Instructions
 
@@ -212,8 +235,18 @@ The current JSON parser has these limitations:
 
 ## 📝 Version History
 
-- **v1.0.0**: Initial reference template with comprehensive patterns
-- **Parser-compatible**: Removed JSON comments for build system compatibility
-- **Documentation**: Moved annotations to this README file
+- **v1.0.0**: Updated for simplified build system
+- **New Schema**: Clean `form: {}` and `controls: []` separation  
+- **Enhanced Parser**: Supports both new and legacy formats
+- **Simplified UX**: Dead simple `Initialize()` and `Build()` workflow
+- **Documentation**: Comprehensive patterns and examples
 
 This template represents the **gold standard** for VBA Build System applications. Use it as your primary reference for all development! 🎯
+
+## 🎯 Quick Start for New Users
+
+1. **Clone the repo** and add both `.bas` files to your VBA project
+2. **Run**: `Call Initialize()` (pick your source folder)  
+3. **Run**: `Call Build()` (select "ExampleApp" from menu)
+4. **Test**: The form should appear with correct dimensions (450×280)
+5. **Success!** You're ready to build your own apps! 🚀

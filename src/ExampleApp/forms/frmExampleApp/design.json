@@ -1,9 +1,11 @@
 {
-  "name": "frmExampleApp",
-  "caption": "Example Application - VBA Build System Template",
-  "width": 450,
-  "height": 280,
-  "startUpPosition": 1,
+  "form": {
+    "name": "frmExampleApp",
+    "caption": "Example Application - VBA Build System Template",
+    "width": 450,
+    "height": 280,
+    "startUpPosition": 1
+  },
   "controls": [
     {
       "name": "lblTitle",

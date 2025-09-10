@@ -2,7 +2,7 @@ Attribute VB_Name = "modBuildSystem"
 ' =====================================================================================
 ' VBA APPLICATION BUILDER - SIMPLIFIED BUILD SYSTEM
 ' =====================================================================================
-' Version: 0.0.2 - Refactored and simplified
+' Version: 0.0.5 - Refactored and simplified
 '
 ' QUICK START:
 ' 1. Call Initialize() to setup
@@ -41,24 +41,21 @@ Private sourcePath As String
 ' PUBLIC API
 ' =====================================================================================
 
-' Initialize the build system
+' Initialize the build system - prompts for source folder
 Public Sub Initialize()
     On Error GoTo ErrorHandler
     
     If Not ValidateTrustSettings() Then Exit Sub
     
-    sourcePath = GetSourcePath()
-    If sourcePath = "" Then
-        sourcePath = PromptForSourcePath()
-        If sourcePath <> "" Then
-            SaveSourcePath sourcePath
-        Else
-            MsgBox "Build system requires a source path.", vbExclamation
-            Exit Sub
-        End If
+    ' Always prompt for source path
+    Dim newPath As String
+    newPath = PromptForSourcePath()
+    If newPath <> "" Then
+        SaveSourcePath newPath
+        MsgBox "✅ VBA Builder initialized!" & vbCrLf & "Source: " & newPath, vbInformation
+    Else
+        MsgBox "Initialization cancelled.", vbInformation
     End If
-    
-    MsgBox "VBA Builder initialized!" & vbCrLf & "Source: " & sourcePath, vbInformation
     Exit Sub
     
 ErrorHandler:
@@ -69,7 +66,13 @@ End Sub
 Public Sub BuildApplication(appName As String)
     On Error GoTo ErrorHandler
     
-    If sourcePath = "" Then Call Initialize: If sourcePath = "" Then Exit Sub
+    ' Auto-initialize if no source path set
+    sourcePath = GetSourcePath()
+    If sourcePath = "" Then
+        Call Initialize
+        sourcePath = GetSourcePath()
+        If sourcePath = "" Then Exit Sub
+    End If
     
     Dim appPath As String
     appPath = sourcePath & "\" & appName
@@ -111,26 +114,34 @@ ErrorHandler:
     MsgBox "Build error: " & Err.Description, vbCritical
 End Sub
 
-' Interactive build menu
-Public Sub BuildInteractive()
-    Call Initialize
+' Build - shows available apps and lets you choose
+Public Sub Build()
+    On Error GoTo ErrorHandler
+    
+    ' Auto-initialize if needed
+    sourcePath = GetSourcePath()
+    If sourcePath = "" Then
+        Call Initialize
+        sourcePath = GetSourcePath()
+        If sourcePath = "" Then Exit Sub
+    End If
     
     Dim apps As Collection
     Set apps = GetAvailableApps()
     
     If apps.Count = 0 Then
-        MsgBox "No applications found in: " & sourcePath, vbExclamation
+        MsgBox "No applications found in: " & sourcePath & vbCrLf & vbCrLf & "Run Initialize() to change the source folder.", vbExclamation
         Exit Sub
     End If
     
     Dim msg As String, i As Integer
-    msg = "Select Application:" & vbCrLf & vbCrLf
+    msg = "Select Application to Build:" & vbCrLf & vbCrLf
     For i = 1 To apps.Count
         msg = msg & i & ". " & apps(i) & vbCrLf
     Next i
     
     Dim choice As String
-    choice = InputBox(msg, "Build Application", "1")
+    choice = InputBox(msg, "VBA Builder", "1")
     If choice = "" Then Exit Sub
     
     If IsNumeric(choice) Then
@@ -140,6 +151,10 @@ Public Sub BuildInteractive()
             Call BuildApplication(apps(sel))
         End If
     End If
+    Exit Sub
+    
+ErrorHandler:
+    MsgBox "Build error: " & Err.Description, vbCritical
 End Sub
 
 ' =====================================================================================
@@ -149,6 +164,7 @@ End Sub
 ' Load and parse JSON file
 Private Function LoadJSON(filePath As String) As Object
     On Error GoTo ErrorHandler
+    
     
     Dim content As String
     content = ReadTextFile(filePath)
@@ -167,15 +183,26 @@ Private Function ParseJSON(jsonText As String) As Object
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
     
-    ' Extract basic string properties
-    dict("name") = GetJsonString(jsonText, "name")
-    dict("version") = GetJsonString(jsonText, "version")
-    dict("caption") = GetJsonString(jsonText, "caption")
-    
-    ' Extract numeric properties as strings for consistency
-    dict("width") = CStr(GetJsonNumber(jsonText, "width"))
-    dict("height") = CStr(GetJsonNumber(jsonText, "height"))
-    dict("startUpPosition") = CStr(GetJsonNumber(jsonText, "startUpPosition"))
+    ' Check if this is a design file with form section
+    If InStr(jsonText, """form""") > 0 Then
+        ' Extract form properties from form section
+        Dim formSection As String
+        formSection = ExtractFormSection(jsonText)
+        
+        dict("name") = GetJsonString(formSection, "name")
+        dict("caption") = GetJsonString(formSection, "caption")
+        dict("width") = CStr(GetJsonNumber(formSection, "width"))
+        dict("height") = CStr(GetJsonNumber(formSection, "height"))
+        dict("startUpPosition") = CStr(GetJsonNumber(formSection, "startUpPosition"))
+    Else
+        ' Legacy format or manifest file - extract from root level
+        dict("name") = GetJsonString(jsonText, "name")
+        dict("version") = GetJsonString(jsonText, "version")
+        dict("caption") = GetJsonString(jsonText, "caption")
+        dict("width") = CStr(GetJsonNumber(jsonText, "width"))
+        dict("height") = CStr(GetJsonNumber(jsonText, "height"))
+        dict("startUpPosition") = CStr(GetJsonNumber(jsonText, "startUpPosition"))
+    End If
     
     ' Extract arrays (convert to comma-separated strings)
     Dim arrVar As Variant
@@ -217,7 +244,8 @@ Private Function GetJsonNumber(json As String, key As String) As Long
     If p = 0 Then Exit Function
     colonPos = InStr(p, json, ":")
     If colonPos = 0 Then Exit Function
-    ' move to first digit or minus sign
+    
+    ' Find the start of the number
     p = colonPos + 1
     Dim ch As String
     Do While p <= Len(json)
@@ -225,7 +253,62 @@ Private Function GetJsonNumber(json As String, key As String) As Long
         If ch Like "[0-9-]" Then Exit Do
         p = p + 1
     Loop
-    GetJsonNumber = CLng(Val(Mid$(json, p)))
+    
+    ' Find the end of the number
+    Dim endPos As Long
+    endPos = p
+    Do While endPos <= Len(json)
+        ch = Mid$(json, endPos, 1)
+        If Not ch Like "[0-9]" Then Exit Do
+        endPos = endPos + 1
+    Loop
+    
+    ' Extract just the number part
+    Dim numberStr As String
+    numberStr = Mid$(json, p, endPos - p)
+    
+    
+    GetJsonNumber = CLng(numberStr)
+End Function
+
+' Extract the form section from design JSON
+Private Function ExtractFormSection(jsonText As String) As String
+    Dim startPos As Long, endPos As Long, braceCount As Long
+    Dim i As Long, char As String, inString As Boolean
+    
+    ' Find "form": {
+    startPos = InStr(jsonText, """form"":")
+    If startPos = 0 Then Exit Function
+    
+    ' Find the opening brace
+    startPos = InStr(startPos, jsonText, "{")
+    If startPos = 0 Then Exit Function
+    
+    ' Find the matching closing brace
+    braceCount = 1
+    inString = False
+    
+    For i = startPos + 1 To Len(jsonText)
+        char = Mid(jsonText, i, 1)
+        
+        If char = """" Then inString = Not inString
+        
+        If Not inString Then
+            If char = "{" Then
+                braceCount = braceCount + 1
+            ElseIf char = "}" Then
+                braceCount = braceCount - 1
+                If braceCount = 0 Then
+                    endPos = i
+                    Exit For
+                End If
+            End If
+        End If
+    Next i
+    
+    If endPos > startPos Then
+        ExtractFormSection = Mid(jsonText, startPos, endPos - startPos + 1)
+    End If
 End Function
 
 Private Function GetJsonStringArray(json As String, key As String) As Variant
