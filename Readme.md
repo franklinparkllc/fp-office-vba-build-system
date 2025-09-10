@@ -46,23 +46,38 @@ Set comp = vbProj.VBComponents.Import(filePath)
 ' Add event handlers and logic to a form
 formComp.CodeModule.AddFromString codeContent
 ```
-## 🏗️ **System Architecture (v2.0)**
-**Single module**: `modBuildSystem.bas` - **80% smaller**, with the same functionality as enterprise-grade solutions.
-- **Core Functions**:
-  - `Initialize()` - Sets up the build system.
-  - `BuildApplication(appName)` - Builds a specific application from the `src` folder.
-  - `BuildInteractive()` - Shows a menu of available applications to build.
-  - `CreateFormDirect()` - The core function that handles the robust form creation process.
-  - `ProcessModules()` - Imports standard `.vba` modules.
-  - `ApplyDesign()` - Applies properties and adds controls to a form based on `design.json`.
-- **Key Simplifications**:
-  - ✅ **True Direct Form Creation**: No temporary files or import/export steps.
-  - ✅ **Lightweight JSON Parsing**: A fast, regex-based parser handles all configuration.
-  - ✅ **Resilient VBE Interaction**: The build process is designed to handle the known quirks of the VBE, such as race conditions during form creation.
+## 🏗️ **System Architecture (v1.0 - Refactored)**
+**Two-module design**: Clean separation of build logic and utilities for better maintainability.
+
+### **modBuildSystem.bas** - Core Build Engine
+- **Primary Functions**:
+  - `Initialize()` - Sets up the build system
+  - `BuildApplication(appName)` - Builds a specific application from the `src` folder
+  - `BuildInteractive()` - Shows a menu of available applications to build
+  - `CreateFormDirect()` - The core function that handles robust form creation
+  - `ProcessModules()` - Imports standard `.vba` modules
+  - `ApplyDesign()` - Applies properties and adds controls to forms
+- **JSON Processing**:
+  - `ParseJSON()` - Lightweight parser for manifest and design files
+  - Simplified extraction functions for strings, numbers, and arrays
+
+### **modBuilderUtils.bas** - Utility Functions
+- **File Operations**: `ReadTextFile()` - Safe file reading with error handling
+- **VBA Project Management**: `GetVBProject()`, `RemoveComponent()`, `ForceProjectStateSave()`
+- **Configuration**: `GetSourcePath()`, `SaveSourcePath()`, `PromptForSourcePath()`
+- **System Info**: `ShowSystemStatus()`, `GetAvailableApps()`, `ValidateTrustSettings()`
+
+### **Key Improvements**:
+- ✅ **Modular Design**: Clean separation of concerns between build logic and utilities
+- ✅ **Simplified JSON Parsing**: Streamlined parser with 50% less code
+- ✅ **Reduced Debug Overhead**: Essential logging only, improved performance
+- ✅ **Consistent Error Handling**: Unified approach across all functions
+- ✅ **Better Maintainability**: Functions focused on single responsibilities
 ## 📁 **Project Structure**
 ```
 YourProject/
-├── modBuildSystem.bas     # The build engine (v2.0)
+├── modBuildSystem.bas     # Core build engine (v1.0)
+├── modBuilderUtils.bas    # Utility functions
 └── src/                   # Your application source files
     ├── ExampleApp/        # A reference application
     │   ├── manifest.json  # App config: name, modules, forms
@@ -83,6 +98,8 @@ YourProject/
 2.  **Press `Alt+F11`** to open the VBA Editor.
 3.  **Insert → Module** and name it `modBuildSystem`.
 4.  **Copy the entire contents** of `modBuildSystem.bas` into the module.
+5.  **Insert → Module** and name it `modBuilderUtils`.
+6.  **Copy the entire contents** of `modBuilderUtils.bas` into the second module.
 ### **2. Enable Trust Center Settings**
 **CRITICAL**: You must allow programmatic access to the VBA project.
 1.  In your Office Application: **File → Options → Trust Center**.
@@ -99,7 +116,7 @@ Call modBuildSystem.BuildInteractive
 ' Or build a specific application by name
 Call modBuildSystem.BuildApplication("ExampleApp")
 ' Check system status
-Call modBuildSystem.ShowSystemStatus
+Call ShowSystemStatus
 ```
 ## 📋 **Application Configuration**
 ### **Simplified Manifest.json**
@@ -157,14 +174,13 @@ frmMyForm.Caption = "New Title"
 ## 🔧 **System Commands**
 ```vba
 ' System setup and status
-Call modBuildSystem.Initialize()
-Call modBuildSystem.ShowSystemStatus()
-' Building applications
-Call modBuildSystem.BuildInteractive()
-Call modBuildSystem.BuildApplication("AppName")
-Call modBuildSystem.ListAvailableApplications()
+Call Initialize()
+Call ShowSystemStatus()
+' Building applications  
+Call BuildInteractive()
+Call BuildApplication("AppName")
 ' Diagnostics
-Call modBuildSystem.ValidateTrustSettings()
+Call ValidateTrustSettings()
 ```
 ## 🛠️ **The Form Build Process Explained**
 The system uses a robust, multi-step process to overcome the quirks of the VBE and reliably generate forms.
@@ -182,18 +198,16 @@ The system uses a robust, multi-step process to overcome the quirks of the VBE a
     -   ✅ Check the file paths shown in `ShowSystemStatus()`.
     -   ✅ Verify the syntax of your `manifest.json` and `design.json` files.
 3.  **"Application not found"**
-    -   ✅ Run `ListAvailableApplications()` to see what the system detects.
+    -   ✅ Check `ShowSystemStatus()` to see available applications.
     -   ✅ Ensure your application folder in `src` contains a valid `manifest.json`.
 ### **Diagnostic Steps**
 ```vba
 ' Step 1: Check system status
-Call modBuildSystem.ShowSystemStatus()
+Call ShowSystemStatus()
 ' Step 2: Validate Trust Center settings
-Call modBuildSystem.ValidateTrustSettings()
-' Step 3: List available apps
-Call modBuildSystem.ListAvailableApplications()
-' Step 4: Try building interactively
-Call modBuildSystem.BuildInteractive()
+Call ValidateTrustSettings()
+' Step 3: Try building interactively
+Call BuildInteractive()
 ```
 ## 🏆 **Benefits**
 ### **For Developers**
@@ -208,12 +222,12 @@ Call modBuildSystem.BuildInteractive()
 ### **For AI Assistants: Simplified Code Generation**
 -   **Simple JSON Structures**: Easy for AI to generate `design.json` files.
 -   **Direct Object References**: AI can generate code that uses `frmYourForm.Show` syntax, as the build process guarantees the form will exist.
--   **Self-Contained & Reliable**: The single-module build system is robust and has minimal failure points.
+-   **Modular & Reliable**: The two-module build system is well-organized with clear separation of concerns.
 ---
 ## 🎉 **Ready for Modern VBA Development?**
-The **v2.0 system** is perfect for AI-driven development. It's faster, more reliable, and brings modern development practices to the world of VBA.
+The **refactored v1.0 system** is perfect for AI-driven development. It's cleaner, more maintainable, and brings modern development practices to the world of VBA.
 ```vba
 ' Get started now!
-Call modBuildSystem.Initialize()
-Call modBuildSystem.BuildInteractive()
+Call Initialize()
+Call BuildInteractive()
 ```

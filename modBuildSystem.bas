@@ -2,23 +2,17 @@ Attribute VB_Name = "modBuildSystem"
 ' =====================================================================================
 ' VBA APPLICATION BUILDER - SIMPLIFIED BUILD SYSTEM
 ' =====================================================================================
-' Version: 0.1.0 - Refactored form creation for reliability
-'
-' This simplified build system focuses on core functionality:
-' • Direct form creation via code (no export/import complexity)
-' • Simple regex-based JSON parsing
-' • Minimal dependencies and maximum stability
-' • Optimized for AI/agentic workflows
+' Version: 0.0.2 - Refactored and simplified
 '
 ' QUICK START:
 ' 1. Call Initialize() to setup
 ' 2. Call BuildApplication("AppName") to build
 '
-' ARCHITECTURE:
-' • Direct VBA object manipulation
-' • Simple file I/O
-' • Streamlined JSON parsing
-' • Direct form/control creation
+' FEATURES:
+' • Direct form creation via VBA object model
+' • Lightweight JSON parsing for manifests and designs
+' • Automatic module and form importing
+' • Minimal dependencies for maximum compatibility
 ' =====================================================================================
 
 Option Explicit
@@ -31,11 +25,17 @@ Option Explicit
 #End If
 
 ' =====================================================================================
+' CONSTANTS
+' =====================================================================================
+Private Const vbext_ct_MSForm As Long = 3
+Private Const vbext_ct_StdModule As Long = 1
+Private Const SLEEP_DELAY As Long = 500
+Private Const CONTROL_DELAY As Long = 10
+
+' =====================================================================================
 ' MODULE VARIABLES
 ' =====================================================================================
 Private sourcePath As String
-Private Const vbext_ct_MSForm = 3
-Private Const vbext_ct_StdModule = 1
 
 ' =====================================================================================
 ' PUBLIC API
@@ -86,21 +86,12 @@ Public Sub BuildApplication(appName As String)
     If manifest Is Nothing Then Exit Sub
     
     ' Build components
-    Debug.Print "=== Starting Build Components ==="
-    
     Dim modulesSuccess As Boolean, formsSuccess As Boolean
     
-    Debug.Print "Processing modules..."
     modulesSuccess = ProcessModules(manifest, appPath)
-    Debug.Print "Modules result: " & modulesSuccess
-    
-    Debug.Print "Processing forms..."
     formsSuccess = ProcessForms(manifest, appPath)
-    Debug.Print "Forms result: " & formsSuccess
     
     If modulesSuccess And formsSuccess Then
-        Debug.Print "✅ Build completed successfully"
-        
         ' Create user-friendly success message
         Dim successMsg As String
         successMsg = "✅ Build completed successfully!" & vbCrLf & vbCrLf & _
@@ -108,15 +99,10 @@ Public Sub BuildApplication(appName As String)
                     "🚀 To test your form:" & vbCrLf & _
                     "   • Type: UserForm1.Show" & vbCrLf & _
                     "   • Press Enter in Immediate window" & vbCrLf & vbCrLf & _
-                    "📝 Optional renaming:" & vbCrLf & _
-                    "   • Save document first (Ctrl+S)" & vbCrLf & _
-                    "   • Right-click 'UserForm1' → Properties" & vbCrLf & _
-                    "   • Change Name to 'frmExampleApp'" & vbCrLf & vbCrLf & _
                     "💡 Check Immediate window for detailed logs"
         
         MsgBox successMsg, vbInformation, "VBA Builder - Success!"
     Else
-        Debug.Print "❌ Build failed - Modules: " & modulesSuccess & ", Forms: " & formsSuccess
         MsgBox "❌ Build failed. Check Immediate window for details.", vbCritical
     End If
     Exit Sub
@@ -164,135 +150,107 @@ End Sub
 Private Function LoadJSON(filePath As String) As Object
     On Error GoTo ErrorHandler
     
-    Debug.Print "=== LoadJSON Debug ==="
-    Debug.Print "Loading JSON from: " & filePath
-    
     Dim content As String
     content = ReadTextFile(filePath)
-    If content = "" Then 
-        Debug.Print "❌ File content is empty"
-        Set LoadJSON = Nothing
-        Exit Function
-    End If
-    
-    Debug.Print "File content loaded, length: " & Len(content)
-    Debug.Print "First 200 chars: " & Left(content, 200)
+    If content = "" Then Set LoadJSON = Nothing: Exit Function
     
     Set LoadJSON = ParseJSON(content)
-    If LoadJSON Is Nothing Then
-        Debug.Print "❌ JSON parsing failed"
-    Else
-        Debug.Print "✅ JSON parsed successfully"
-    End If
     Exit Function
     
 ErrorHandler:
-    Debug.Print "❌ ERROR in LoadJSON: " & Err.Number & " - " & Err.Description
+    Debug.Print "Error loading JSON: " & Err.Description
     Set LoadJSON = Nothing
 End Function
 
-' Simple JSON parser using regex
+' Simple JSON parser for manifest and design files
 Private Function ParseJSON(jsonText As String) As Object
-    On Error GoTo ErrorHandler
-    
-    Debug.Print "=== ParseJSON Debug ==="
-    
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
-    Debug.Print "Dictionary created"
     
-    ' Extract values for manifest.json and design.json
-    dict("name") = ExtractValue(jsonText, "name")
-    dict("version") = ExtractValue(jsonText, "version")
-    dict("modules") = ExtractValue(jsonText, "modules")
-    dict("forms") = ExtractValue(jsonText, "forms")
-    dict("caption") = ExtractValue(jsonText, "caption")
-    dict("width") = ExtractValue(jsonText, "width")
-    dict("height") = ExtractValue(jsonText, "height")
-    dict("startUpPosition") = ExtractValue(jsonText, "startUpPosition")
+    ' Extract basic string properties
+    dict("name") = GetJsonString(jsonText, "name")
+    dict("version") = GetJsonString(jsonText, "version")
+    dict("caption") = GetJsonString(jsonText, "caption")
     
-    Debug.Print "Extracted - Name: " & dict("name") & ", Caption: " & dict("caption")
+    ' Extract numeric properties as strings for consistency
+    dict("width") = CStr(GetJsonNumber(jsonText, "width"))
+    dict("height") = CStr(GetJsonNumber(jsonText, "height"))
+    dict("startUpPosition") = CStr(GetJsonNumber(jsonText, "startUpPosition"))
     
-    ' Extract references array
-    Dim refsText As String
-    refsText = ExtractArray(jsonText, "references")
-    If refsText <> "" Then
-        Debug.Print "References array found: " & refsText
-        Dim refs As Collection
-        Set refs = ParseStringArray(refsText)
-        Set dict("references") = refs
-        Debug.Print "References parsed, count: " & refs.Count
-    Else
-        Debug.Print "No references array found"
+    ' Extract arrays (convert to comma-separated strings)
+    Dim arrVar As Variant
+    dict("modules") = GetJsonString(jsonText, "modules")
+    If dict("modules") = "" Then
+        arrVar = GetJsonStringArray(jsonText, "modules")
+        If IsArray(arrVar) Then dict("modules") = Join(arrVar, ",")
     End If
     
-    ' Extract controls array
-    Dim controlsText As String
-    controlsText = ExtractArray(jsonText, "controls")
-    If controlsText <> "" Then
-        Debug.Print "Controls array found, length: " & Len(controlsText)
-        Debug.Print "Controls text preview: " & Left(controlsText, 100)
-        Dim controls As Collection
-        Set controls = ParseControlsArray(controlsText)
-        Set dict("controls") = controls
-        Debug.Print "Controls parsed, count: " & controls.Count
-    Else
-        Debug.Print "No controls array found"
+    dict("forms") = GetJsonString(jsonText, "forms")
+    If dict("forms") = "" Then
+        arrVar = GetJsonStringArray(jsonText, "forms")
+        If IsArray(arrVar) Then dict("forms") = Join(arrVar, ",")
     End If
     
-    Debug.Print "✅ ParseJSON completed, dictionary has " & dict.Count & " keys"
+    ' Extract controls array as raw text for processing
+    dict("controls") = ExtractJsonArrayText(jsonText, "controls")
+    
     Set ParseJSON = dict
-    Exit Function
-    
-ErrorHandler:
-    Debug.Print "❌ ERROR in ParseJSON: " & Err.Number & " - " & Err.Description
-    Set ParseJSON = Nothing
 End Function
 
-' Extract JSON value (string or number)
-Private Function ExtractValue(json As String, key As String) As String
-    Dim regex As Object
-    Set regex = CreateObject("VBScript.RegExp")
-    ' Updated pattern to handle both quoted strings and unquoted numbers
-    regex.Pattern = """" & key & """\s*:\s*""([^""]*)""|""" & key & """\s*:\s*([^,}\s]+)"
-    regex.IgnoreCase = True
-    
-    Dim matches As Object
-    Set matches = regex.Execute(json)
-    
-    If matches.Count > 0 Then
-        If matches(0).SubMatches(0) <> "" Then
-            ' Quoted string value
-            ExtractValue = matches(0).SubMatches(0)
-        ElseIf matches(0).SubMatches(1) <> "" Then
-            ' Unquoted numeric value
-            ExtractValue = Trim(matches(0).SubMatches(1))
-        End If
-    End If
+' ===== JSON helper functions (schema specific, no error handling for speed) =====
+Private Function GetJsonString(json As String, key As String) As String
+    Dim p As Long, q As Long, colonPos As Long, quote As String
+    quote = Chr$(34)
+    p = InStr(json, quote & key & quote) ' key position
+    If p = 0 Then Exit Function
+    colonPos = InStr(p, json, ":")
+    If colonPos = 0 Then Exit Function
+    ' find first quote after the colon
+    p = InStr(colonPos, json, quote) + 1
+    q = InStr(p, json, quote)
+    GetJsonString = Mid$(json, p, q - p)
 End Function
 
-' Extract JSON array content
-Private Function ExtractArray(json As String, key As String) As String
-    Dim startPos As Long, endPos As Long
-    Dim searchStr As String
-    searchStr = """" & key & """" & "\s*:\s*\["
-    
-    Dim regex As Object
-    Set regex = CreateObject("VBScript.RegExp")
-    regex.Pattern = searchStr
-    regex.IgnoreCase = True
-    
-    Dim matches As Object
-    Set matches = regex.Execute(json)
-    
-    If matches.Count > 0 Then
-        startPos = matches(0).FirstIndex + matches(0).Length
-        endPos = InStr(startPos, json, "]")
-        If endPos > startPos Then
-            ExtractArray = Mid(json, startPos, endPos - startPos)
-        End If
-    End If
+Private Function GetJsonNumber(json As String, key As String) As Long
+    Dim p As Long, colonPos As Long, quote As String: quote = Chr$(34)
+    p = InStr(json, quote & key & quote)
+    If p = 0 Then Exit Function
+    colonPos = InStr(p, json, ":")
+    If colonPos = 0 Then Exit Function
+    ' move to first digit or minus sign
+    p = colonPos + 1
+    Dim ch As String
+    Do While p <= Len(json)
+        ch = Mid$(json, p, 1)
+        If ch Like "[0-9-]" Then Exit Do
+        p = p + 1
+    Loop
+    GetJsonNumber = CLng(Val(Mid$(json, p)))
 End Function
+
+Private Function GetJsonStringArray(json As String, key As String) As Variant
+    Dim arrText As String, items() As String, i As Long
+    arrText = ExtractJsonArrayText(json, key)
+    If arrText = "" Then Exit Function
+    arrText = Replace(arrText, """", "")
+    items = Split(arrText, ",")
+    For i = 0 To UBound(items)
+        items(i) = Trim$(items(i))
+    Next i
+    GetJsonStringArray = items
+End Function
+
+Private Function ExtractJsonArrayText(json As String, key As String) As String
+    Dim p As Long, startPos As Long, endPos As Long, quote As String
+    quote = Chr$(34)
+    p = InStr(json, quote & key & quote & ":")
+    If p = 0 Then Exit Function
+    startPos = InStr(p, json, "[") + 1
+    endPos = InStr(startPos, json, "]")
+    If startPos = 0 Or endPos = 0 Then Exit Function
+    ExtractJsonArrayText = Mid$(json, startPos, endPos - startPos)
+End Function
+
 
 ' Parse string array
 Private Function ParseStringArray(arrayText As String) As Collection
@@ -313,39 +271,22 @@ Private Function ParseStringArray(arrayText As String) As Collection
     Set ParseStringArray = coll
 End Function
 
-' Parse controls array - enhanced approach
+' Parse controls array from JSON text
 Private Function ParseControlsArray(arrayText As String) As Collection
     Dim coll As New Collection
     
-    Debug.Print "=== ParseControlsArray Debug ==="
-    Debug.Print "Array text length: " & Len(arrayText)
-    Debug.Print "Array text preview: " & Left(arrayText, 200)
-    
-    ' Use a more robust approach to split JSON objects
     Dim controlObjects As Collection
     Set controlObjects = SplitJSONControlObjects(arrayText)
     
-    Debug.Print "Found " & controlObjects.Count & " control objects"
-    
     Dim i As Integer
     For i = 1 To controlObjects.Count
-        Dim controlText As String
-        controlText = controlObjects(i)
-        
-        Debug.Print "Processing control " & i & ": " & Left(controlText, 100)
-        
-        ' Parse individual control
         Dim controlDict As Object
-        Set controlDict = ParseControlObject(controlText)
+        Set controlDict = ParseControlObject(controlObjects(i))
         If Not controlDict Is Nothing Then
             coll.Add controlDict
-            Debug.Print "✅ Control " & i & " parsed successfully"
-        Else
-            Debug.Print "❌ Control " & i & " parsing failed"
         End If
     Next i
     
-    Debug.Print "✅ ParseControlsArray completed with " & coll.Count & " controls"
     Set ParseControlsArray = coll
 End Function
 
@@ -413,37 +354,23 @@ Private Function ParseControlObject(controlText As String) As Object
     Dim dict As Object
     Set dict = CreateObject("Scripting.Dictionary")
     
-    Debug.Print "--- ParseControlObject Debug ---"
-    Debug.Print "Control text: " & Left(controlText, 150)
-    
     ' Extract basic properties
-    dict("name") = ExtractValue(controlText, "name")
-    dict("type") = ExtractValue(controlText, "type")
-    dict("caption") = ExtractValue(controlText, "caption")
+    dict("name") = GetJsonString(controlText, "name")
+    dict("type") = GetJsonString(controlText, "type")
+    dict("caption") = GetJsonString(controlText, "caption")
     
-    Debug.Print "Extracted - Name: " & dict("name") & ", Type: " & dict("type") & ", Caption: " & dict("caption")
-    
+    ' Extract numeric position values
     Dim leftVal As String, topVal As String, widthVal As String, heightVal As String
-    leftVal = ExtractValue(controlText, "left")
-    topVal = ExtractValue(controlText, "top")
-    widthVal = ExtractValue(controlText, "width")
-    heightVal = ExtractValue(controlText, "height")
-    
-    Debug.Print "Position values - Left: " & leftVal & ", Top: " & topVal & ", Width: " & widthVal & ", Height: " & heightVal
+    leftVal = CStr(GetJsonNumber(controlText, "left"))
+    topVal = CStr(GetJsonNumber(controlText, "top"))
+    widthVal = CStr(GetJsonNumber(controlText, "width"))
+    heightVal = CStr(GetJsonNumber(controlText, "height"))
     
     If IsNumeric(leftVal) Then dict("left") = CLng(leftVal)
     If IsNumeric(topVal) Then dict("top") = CLng(topVal)
     If IsNumeric(widthVal) Then dict("width") = CLng(widthVal)
     If IsNumeric(heightVal) Then dict("height") = CLng(heightVal)
     
-    ' Handle font object (simplified - just extract what we need)
-    If InStr(controlText, """font""") > 0 Then
-        Debug.Print "Font object found in control"
-        ' For now, we'll skip font parsing to focus on getting controls created
-        ' Font properties can be added later if needed
-    End If
-    
-    Debug.Print "✅ ParseControlObject completed for: " & dict("name")
     Set ParseControlObject = dict
 End Function
 
@@ -488,199 +415,121 @@ End Function
 Private Function CreateFormDirect(formName As String, appPath As String) As Boolean
     On Error GoTo ErrorHandler
     
-    Debug.Print "=== CreateFormDirect Debug ==="
-    Debug.Print "Form Name: " & formName
-    Debug.Print "App Path: " & appPath
-    
     Dim vbProj As Object
     Set vbProj = GetVBProject()
-    Debug.Print "VB Project obtained: " & vbProj.Name
     
-    ' Remove existing form
-    Debug.Print "Checking for existing form: " & formName
-    Dim existingForm As Object
-    On Error Resume Next
-    Set existingForm = vbProj.VBComponents(formName)
-    If Not existingForm Is Nothing Then
-        Debug.Print "Found existing form, removing..."
-        Call RemoveComponent(vbProj, formName)
-        Debug.Print "Existing form removed"
-    Else
-        Debug.Print "No existing form found"
-    End If
-    On Error GoTo ErrorHandler
+    ' Remove existing form if it exists
+    Call RemoveComponent(vbProj, formName)
     
     ' Create new form
-    Debug.Print "Creating new UserForm component..."
     Dim formComp As Object
     Set formComp = vbProj.VBComponents.Add(vbext_ct_MSForm)
-    Debug.Print "UserForm created with temporary name: " & formComp.Name
     
-    ' STEP 1: Apply design and controls to the new form FIRST.
-    ' This makes the form "dirty" and more likely to accept a name change.
+    ' Apply design first (makes form "dirty" for easier renaming)
     Dim designPath As String
     designPath = appPath & "\forms\" & formName & "\design.json"
-    Debug.Print "Design path: " & designPath
     
     If Dir(designPath) <> "" Then
         Dim design As Object
         Set design = LoadJSON(designPath)
         If Not design Is Nothing Then
-            ' Pass the component itself, not the designer
             Call ApplyDesign(formComp, design)
-        Else
-            Debug.Print "❌ Failed to parse design JSON"
         End If
-    Else
-        Debug.Print "⚠️ No design file found at: " & designPath
     End If
     
-    ' STEP 2: PAUSE to let the VBE process the new form and its design changes.
+    ' Allow VBE to process changes
     DoEvents
-    Sleep 500 ' Wait 500 milliseconds
+    Sleep SLEEP_DELAY
     
-    ' STEP 3: Now, attempt the RENAME.
+    ' Attempt to rename form
     On Error Resume Next
     formComp.Properties("Name").Value = formName
     If Err.Number <> 0 Then
-        Debug.Print "⚠️ Properties('Name') rename failed. Falling back to direct assignment."
         Err.Clear
-        formComp.Name = formName ' Fallback attempt
+        formComp.Name = formName ' Fallback
     End If
     On Error GoTo ErrorHandler
     
-    ' Verify rename and provide feedback
-    If formComp.Name = formName Then
-        Debug.Print "✅ Form renamed successfully to: " & formComp.Name
-    Else
-        Debug.Print "ℹ️ Form rename failed. Final name is: " & formComp.Name
-        Debug.Print "ℹ️ This is a known VBE limitation. The form will still work as " & formComp.Name & "."
-    End If
-    
-    ' STEP 4: Add code-behind.
+    ' Add code-behind if available
     Dim codePath As String
     codePath = appPath & "\forms\" & formName & "\code-behind.vba"
-    Debug.Print "Code-behind path: " & codePath
     
     If Dir(codePath) <> "" Then
         Dim codeContent As String
         codeContent = ReadTextFile(codePath)
         If codeContent <> "" Then
             formComp.CodeModule.AddFromString codeContent
-            Debug.Print "Code-behind added successfully"
-        Else
-            Debug.Print "⚠️ Code-behind file is empty"
         End If
-    Else
-        Debug.Print "⚠️ No code-behind file found at: " & codePath
     End If
     
-    ' STEP 5: Force save to persist all changes.
+    ' Save changes
     Call ForceProjectStateSave
     
-    Debug.Print "✅ CreateFormDirect completed successfully"
-    Debug.Print "Final form name: " & formComp.Name
-    
-    ' Provide user guidance based on final name
-    Debug.Print "📋 FORM READY: Use " & formComp.Name & ".Show to display the form"
-    
+    Debug.Print "Form created: " & formComp.Name & " (use " & formComp.Name & ".Show)"
     CreateFormDirect = True
     Exit Function
     
 ErrorHandler:
-    Debug.Print "❌ ERROR in CreateFormDirect: " & Err.Number & " - " & Err.Description
+    Debug.Print "Error creating form " & formName & ": " & Err.Description
     CreateFormDirect = False
 End Function
 
 ' Apply design to form
 Private Sub ApplyDesign(formComp As Object, design As Object)
-    On Error GoTo DesignError
+    On Error Resume Next ' Don't fail build for design issues
     
-    Debug.Print "=== ApplyDesign Debug ==="
-    
-    ' Use the component's .Properties collection for robustness
+    ' Set basic properties
     If design.Exists("caption") And design("caption") <> "" Then
         formComp.Properties("Caption").Value = design("caption")
-        Debug.Print "Caption set: " & formComp.Properties("Caption").Value
     End If
     
-    ' Sizing - The designer properties use points (Single data type)
-    If design.Exists("width") And IsNumeric(design("width")) Then
+    ' Set dimensions
+    If design.Exists("width") And IsNumeric(design("width")) And CLng(design("width")) > 0 Then
         formComp.Properties("Width").Value = CSng(design("width"))
     End If
-    If design.Exists("height") And IsNumeric(design("height")) Then
+    If design.Exists("height") And IsNumeric(design("height")) And CLng(design("height")) > 0 Then
         formComp.Properties("Height").Value = CSng(design("height"))
     End If
-    Debug.Print "Dimensions set: Width=" & formComp.Properties("Width").Value & ", Height=" & formComp.Properties("Height").Value
     
-    ' Positioning
+    ' Set startup position
     If design.Exists("startUpPosition") And IsNumeric(design("startUpPosition")) Then
         formComp.Properties("StartUpPosition").Value = CInt(design("startUpPosition"))
-        Debug.Print "Startup Position set: " & formComp.Properties("StartUpPosition").Value
     End If
     
-    ' Create controls on the form's designer
-    If design.Exists("controls") Then
-        Debug.Print "Controls found in design, creating..."
-        ' Note: We pass the .Designer to CreateControls
-        Call CreateControls(formComp.Designer, design("controls"))
-        Debug.Print "Controls creation completed"
-    Else
-        Debug.Print "No controls found in design"
-    End If
-    
-    Debug.Print "✅ ApplyDesign completed successfully"
-    Exit Sub
-    
-DesignError:
-    Debug.Print "❌ ERROR in ApplyDesign: " & Err.Number & " - " & Err.Description
-    ' Continue execution - don't fail the entire build for design issues
-    Resume Next
-End Sub
-
-' Create controls on form - handles JSON control arrays
-Private Sub CreateControls(formObj As Object, controlsData As Object)
     On Error GoTo ControlsError
     
-    Debug.Print "=== CreateControls Debug ==="
-    Debug.Print "Controls data type: " & TypeName(controlsData)
-    
-    ' controlsData should be a Collection from JSON parsing
-    If TypeName(controlsData) = "Collection" Then
-        Debug.Print "Controls collection found with " & controlsData.Count & " items"
-        
-        Dim i As Integer
-        For i = 1 To controlsData.Count
-            Debug.Print "Processing control " & i & " of " & controlsData.Count
-            
-            Dim controlDict As Object
-            Set controlDict = controlsData(i)
-            
-            If Not controlDict Is Nothing Then
-                Debug.Print "Control " & i & " dictionary type: " & TypeName(controlDict)
-                Call CreateSingleControl(formObj, controlDict)
-                Debug.Print "Control " & i & " created successfully"
-            Else
-                Debug.Print "⚠️ Control " & i & " is Nothing"
-            End If
-        Next i
-        
-        Debug.Print "✅ All controls processed"
-    Else
-        Debug.Print "⚠️ Controls data is not a Collection, type: " & TypeName(controlsData)
+    ' Create controls
+    If design.Exists("controls") And design("controls") <> "" Then
+        If TypeName(design("controls")) = "String" Then
+            Set design("controls") = ParseControlsArray(design("controls"))
+        End If
+        Call CreateControls(formComp.Designer, design("controls"))
     End If
     Exit Sub
     
 ControlsError:
-    Debug.Print "❌ ERROR in CreateControls: " & Err.Number & " - " & Err.Description
-    Resume Next
+    Debug.Print "Warning: Controls creation failed: " & Err.Description
+End Sub
+
+' Create controls on form
+Private Sub CreateControls(formObj As Object, controlsData As Object)
+    On Error Resume Next
+    
+    If TypeName(controlsData) = "Collection" Then
+        Dim i As Integer
+        For i = 1 To controlsData.Count
+            Dim controlDict As Object
+            Set controlDict = controlsData(i)
+            If Not controlDict Is Nothing Then
+                Call CreateSingleControl(formObj, controlDict)
+            End If
+        Next i
+    End If
 End Sub
 
 ' Create individual control from dictionary
 Private Sub CreateSingleControl(formObj As Object, controlDict As Object)
-    On Error GoTo SingleControlError
-    
-    Debug.Print "--- CreateSingleControl Debug ---"
+    On Error Resume Next
     
     Dim ctrlName As String, ctrlType As String, caption As String
     ctrlName = "Control1"
@@ -689,30 +538,21 @@ Private Sub CreateSingleControl(formObj As Object, controlDict As Object)
     If controlDict.Exists("name") Then ctrlName = controlDict("name")
     If controlDict.Exists("type") Then ctrlType = controlDict("type")
     If controlDict.Exists("caption") Then caption = controlDict("caption")
-    Debug.Print "Control properties: Name=" & ctrlName & ", Type=" & ctrlType
     
     ' Create the control
     Dim ctrl As Object
     Set ctrl = formObj.Controls.Add(GetControlType(ctrlType), ctrlName)
-    Debug.Print "Control created: " & ctrl.Name
     
     ' Apply properties
     If caption <> "" Then ctrl.Caption = caption
-    
-    ' Apply positioning with validation
     If controlDict.Exists("left") Then ctrl.Left = CLng(controlDict("left"))
     If controlDict.Exists("top") Then ctrl.Top = CLng(controlDict("top"))
     If controlDict.Exists("width") Then ctrl.Width = CLng(controlDict("width"))
     If controlDict.Exists("height") Then ctrl.Height = CLng(controlDict("height"))
 
-    Debug.Print "Final control position: Left=" & ctrl.Left & ", Top=" & ctrl.Top & ", Width=" & ctrl.Width & ", Height=" & ctrl.Height
-    
-    Debug.Print "✅ Single control creation completed"
-    Exit Sub
-    
-SingleControlError:
-    Debug.Print "❌ ERROR in CreateSingleControl: " & Err.Number & " - " & Err.Description
-    Debug.Print "Control name: " & ctrlName & ", Type: " & ctrlType
+    ' Allow VBE to process control
+    DoEvents
+    Sleep CONTROL_DELAY
 End Sub
 
 ' Get control type string for VBA
@@ -798,225 +638,3 @@ Private Function ImportModule(moduleName As String, filePath As String) As Boole
 ErrorHandler:
     ImportModule = False
 End Function
-
-' =====================================================================================
-' UTILITY FUNCTIONS
-' =====================================================================================
-
-' Force project state save to persist form properties
-Private Sub ForceProjectStateSave()
-    On Error Resume Next
-    Debug.Print "=== Forcing Project State Save ==="
-
-    Dim thisProject As Object
-    Set thisProject = GetVBProject()
-    If thisProject Is Nothing Then
-        Debug.Print "⚠️ Could not get current VBProject to save."
-        Exit Sub
-    End If
-
-    ' Directly get the host document (Workbook, Document, etc.) from the project
-    Dim hostDoc As Object
-    Set hostDoc = thisProject.Parent
-    
-    If hostDoc Is Nothing Then
-        Debug.Print "⚠️ Could not get host document from VBProject.Parent."
-        Exit Sub
-    End If
-    
-    ' Check if the document has a path. If not, it can't be saved.
-    If hostDoc.Path = "" Then
-        Debug.Print "⚠️ Host document has not been saved yet. Please save it first."
-        Exit Sub
-    End If
-
-    If Not hostDoc.Saved Then
-        hostDoc.Save
-        Debug.Print "Host document saved: " & hostDoc.Name
-    Else
-        Debug.Print "Host document was already saved."
-    End If
-    
-    If Err.Number <> 0 Then
-        Debug.Print "⚠️ Could not save document. Error: " & Err.Number & " - " & Err.Description
-        Err.Clear
-    End If
-    On Error GoTo 0
-End Sub
-
-' Get VBA project
-Private Function GetVBProject() As Object
-    On Error Resume Next
-    
-    Dim vbProj As Object
-    Dim vbComp As Object
-    
-    For Each vbProj In Application.VBE.VBProjects
-        For Each vbComp In vbProj.VBComponents
-            If vbComp.Name = "modBuildSystem" Then
-                Set GetVBProject = vbProj
-                Exit Function
-            End If
-        Next vbComp
-    Next vbProj
-    
-    ' Fallback to active project if module not found (shouldn't happen)
-    Debug.Print "GetVBProject: Could not find project containing 'modBuildSystem'. Falling back to ActiveVBProject."
-    Set GetVBProject = Application.VBE.ActiveVBProject
-End Function
-
-' Remove component if exists
-Private Sub RemoveComponent(vbProj As Object, componentName As String)
-    On Error Resume Next
-    
-    Debug.Print "--- RemoveComponent Debug ---"
-    Debug.Print "Attempting to remove: " & componentName
-    
-    Dim comp As Object
-    Set comp = vbProj.VBComponents(componentName)
-    If Not comp Is Nothing Then
-        Debug.Print "Component found, removing..."
-        vbProj.VBComponents.Remove comp
-        If Err.Number = 0 Then
-            Debug.Print "✅ Component removed successfully"
-        Else
-            Debug.Print "⚠️ Remove failed: " & Err.Number & " - " & Err.Description
-        End If
-    Else
-        Debug.Print "Component not found (already removed or doesn't exist)"
-    End If
-    
-    On Error GoTo 0
-End Sub
-
-' Read text file
-Private Function ReadTextFile(filePath As String) As String
-    On Error GoTo ErrorHandler
-    
-    Dim fileNum As Integer
-    fileNum = FreeFile
-    Open filePath For Input As fileNum
-    ReadTextFile = Input(LOF(fileNum), fileNum)
-    Close fileNum
-    Exit Function
-    
-ErrorHandler:
-    If fileNum > 0 Then Close fileNum
-    ReadTextFile = ""
-End Function
-
-' Validate trust settings
-Private Function ValidateTrustSettings() As Boolean
-    On Error GoTo ErrorHandler
-    Dim test As Object
-    Set test = Application.VBE.ActiveVBProject
-    ValidateTrustSettings = True
-    Exit Function
-    
-ErrorHandler:
-    MsgBox "VBA project access disabled. Enable 'Trust access to VBA project object model' in Trust Center.", vbCritical
-    ValidateTrustSettings = False
-End Function
-
-' Get available applications
-Private Function GetAvailableApps() As Collection
-    Dim apps As New Collection
-    Dim fso As Object
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    
-    If sourcePath <> "" And fso.FolderExists(sourcePath) Then
-        Dim folder As Object
-        Set folder = fso.GetFolder(sourcePath)
-        
-        Dim subfolder As Object
-        For Each subfolder In folder.SubFolders
-            If Dir(subfolder.Path & "\manifest.json") <> "" Then
-                apps.Add subfolder.Name
-            End If
-        Next
-    End If
-    
-    Set GetAvailableApps = apps
-End Function
-
-' Source path management
-Private Function GetSourcePath() As String
-    On Error Resume Next
-    GetSourcePath = GetSetting("VBABuilder", "Config", "SourcePath", "")
-End Function
-
-Private Sub SaveSourcePath(path As String)
-    On Error Resume Next
-    SaveSetting "VBABuilder", "Config", "SourcePath", path
-End Sub
-
-Private Function PromptForSourcePath() As String
-    On Error GoTo ErrorHandler
-    
-    Dim folderPicker As Object
-    Set folderPicker = Application.FileDialog(4)
-    
-    With folderPicker
-        .Title = "Select VBA Source Folder"
-        .AllowMultiSelect = False
-        If .Show = -1 Then
-            PromptForSourcePath = .SelectedItems(1)
-        End If
-    End With
-    Exit Function
-    
-ErrorHandler:
-    PromptForSourcePath = InputBox("Enter source folder path:", "VBA Builder", "C:\YourProject\src")
-End Function
-
-' System status
-Public Sub ShowSystemStatus()
-    Dim msg As String
-    msg = "=== VBA Builder Status ===" & vbCrLf & vbCrLf
-    msg = msg & "Version: 2.0.4 (Fixed positioning)" & vbCrLf
-    msg = msg & "Source Path: " & IIf(GetSourcePath() = "", "(not set)", GetSourcePath()) & vbCrLf
-    
-    Dim apps As Collection
-    Set apps = GetAvailableApps()
-    msg = msg & "Available Apps: " & apps.Count & vbCrLf & vbCrLf
-    
-    msg = msg & "Commands:" & vbCrLf
-    msg = msg & "• Initialize() - Setup system" & vbCrLf
-    msg = msg & "• BuildInteractive() - Build with menu" & vbCrLf
-    msg = msg & "• BuildApplication(""AppName"") - Build specific app" & vbCrLf
-    msg = msg & "• TestLastBuiltForm() - Show the last built form"
-    
-    MsgBox msg, vbInformation, "VBA Builder Status"
-End Sub
-
-' Test function to show the last built form
-Public Sub TestLastBuiltForm()
-    On Error GoTo ErrorHandler
-    
-    ' Try common form names
-    Dim formNames As Variant
-    formNames = Array("UserForm1", "frmExampleApp", "UserForm2")
-    
-    Dim i As Integer
-    For i = 0 To UBound(formNames)
-        On Error Resume Next
-        Dim testForm As Object
-        ' Try to get the form by name
-        Set testForm = Application.VBE.ActiveVBProject.VBComponents(formNames(i)).Designer
-        If Not testForm Is Nothing Then
-            On Error GoTo ErrorHandler
-            Debug.Print "🚀 Showing form: " & formNames(i)
-            ' Show the form
-            Application.Run formNames(i) & ".Show"
-            Exit Sub
-        End If
-        On Error GoTo ErrorHandler
-    Next i
-    
-    MsgBox "No forms found to test. Build an application first using BuildInteractive().", vbInformation, "No Forms Found"
-    Exit Sub
-    
-ErrorHandler:
-    MsgBox "Error testing form: " & Err.Description & vbCrLf & vbCrLf & _
-           "Try manually: UserForm1.Show", vbExclamation, "Test Error"
-End Sub
