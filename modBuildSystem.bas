@@ -2,7 +2,7 @@ Attribute VB_Name = "modBuildSystem"
 ' =====================================================================================
 ' VBA APPLICATION BUILDER - SIMPLIFIED BUILD SYSTEM
 ' =====================================================================================
-' Version: 0.0.5 - Refactored and simplified
+' Version: 1.0.1 - Refactored and simplified
 '
 ' QUICK START:
 ' 1. Call Initialize() to setup
@@ -19,7 +19,7 @@ Option Explicit
 
 ' Win32 API for waiting
 #If VBA7 Then
-    Public Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As LongPtr)
+    Public Declare PtrSafe Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
 #Else
     Public Declare Sub Sleep Lib "kernel32" (ByVal dwMilliseconds As Long)
 #End If
@@ -88,6 +88,9 @@ Public Sub BuildApplication(appName As String)
     Set manifest = LoadJSON(appPath & "\manifest.json")
     If manifest Is Nothing Then Exit Sub
     
+    ' Process references from manifest (if any)
+    Call ProcessReferences(manifest)
+
     ' Build components
     Dim modulesSuccess As Boolean, formsSuccess As Boolean
     
@@ -97,10 +100,24 @@ Public Sub BuildApplication(appName As String)
     If modulesSuccess And formsSuccess Then
         ' Create user-friendly success message
         Dim successMsg As String
+        Dim formLaunchHints As String
+        Dim builtForms As Variant
+        formLaunchHints = ""
+        If manifest.Exists("forms") And manifest("forms") <> "" Then
+            builtForms = Split(manifest("forms"), ",")
+            Dim f As Integer
+            For f = 0 To UBound(builtForms)
+                If Trim(builtForms(f)) <> "" Then
+                    formLaunchHints = formLaunchHints & "   • Type: " & Trim(builtForms(f)) & ".Show" & vbCrLf
+                End If
+            Next f
+        End If
+        If formLaunchHints = "" Then formLaunchHints = "   • Type: <YourFormName>.Show" & vbCrLf
+        
         successMsg = "✅ Build completed successfully!" & vbCrLf & vbCrLf & _
                     "Application: " & appName & vbCrLf & vbCrLf & _
                     "🚀 To test your form:" & vbCrLf & _
-                    "   • Type: UserForm1.Show" & vbCrLf & _
+                    formLaunchHints & _
                     "   • Press Enter in Immediate window" & vbCrLf & vbCrLf & _
                     "💡 Check Immediate window for detailed logs"
         
@@ -221,6 +238,21 @@ Private Function ParseJSON(jsonText As String) As Object
     ' Extract controls array as raw text for processing
     dict("controls") = ExtractJsonArrayText(jsonText, "controls")
     
+    ' Add dependency parsing
+    Dim depSection As String
+    depSection = ExtractJsonObjectSection(jsonText, "dependencies")
+    If depSection <> "" Then
+        Dim refsArr As Variant
+        refsArr = GetJsonStringArray(depSection, "references")
+        If IsArray(refsArr) Then
+            dict("references") = Join(refsArr, ",")
+        Else
+            Dim refsText As String
+            refsText = ExtractJsonArrayText(depSection, "references")
+            If refsText <> "" Then dict("references") = refsText
+        End If
+    End If
+    
     Set ParseJSON = dict
 End Function
 
@@ -271,6 +303,23 @@ Private Function GetJsonNumber(json As String, key As String) As Long
     GetJsonNumber = CLng(numberStr)
 End Function
 
+Private Function GetJsonBoolean(json As String, key As String) As Boolean
+    Dim p As Long, colonPos As Long, quote As String: quote = Chr$(34)
+    p = InStr(json, quote & key & quote)
+    If p = 0 Then Exit Function
+    colonPos = InStr(p, json, ":")
+    If colonPos = 0 Then Exit Function
+    
+    Dim i As Long, ch As String
+    i = colonPos + 1
+    Do While i <= Len(json)
+        ch = Mid$(json, i, 1)
+        If ch Like "[A-Za-z]" Then Exit Do
+        i = i + 1
+    Loop
+    GetJsonBoolean = (LCase$(Mid$(json, i, 4)) = "true")
+End Function
+
 ' Extract the form section from design JSON
 Private Function ExtractFormSection(jsonText As String) As String
     Dim startPos As Long, endPos As Long, braceCount As Long
@@ -308,6 +357,40 @@ Private Function ExtractFormSection(jsonText As String) As String
     
     If endPos > startPos Then
         ExtractFormSection = Mid(jsonText, startPos, endPos - startPos + 1)
+    End If
+End Function
+
+Private Function ExtractJsonObjectSection(jsonText As String, key As String) As String
+    Dim startPos As Long, endPos As Long, braceCount As Long
+    Dim i As Long, char As String, inString As Boolean
+    
+    startPos = InStr(jsonText, Chr$(34) & key & Chr$(34) & ":")
+    If startPos = 0 Then Exit Function
+    
+    startPos = InStr(startPos, jsonText, "{")
+    If startPos = 0 Then Exit Function
+    
+    braceCount = 1
+    inString = False
+    
+    For i = startPos + 1 To Len(jsonText)
+        char = Mid$(jsonText, i, 1)
+        If char = Chr$(34) Then inString = Not inString
+        If Not inString Then
+            If char = "{" Then
+                braceCount = braceCount + 1
+            ElseIf char = "}" Then
+                braceCount = braceCount - 1
+                If braceCount = 0 Then
+                    endPos = i
+                    Exit For
+                End If
+            End If
+        End If
+    Next i
+    
+    If endPos > startPos Then
+        ExtractJsonObjectSection = Mid$(jsonText, startPos, endPos - startPos + 1)
     End If
 End Function
 
@@ -454,6 +537,24 @@ Private Function ParseControlObject(controlText As String) As Object
     If IsNumeric(widthVal) Then dict("width") = CLng(widthVal)
     If IsNumeric(heightVal) Then dict("height") = CLng(heightVal)
     
+    ' Extend control parsing to support fonts
+    Dim fontObjText As String
+    fontObjText = ExtractJsonObjectSection(controlText, "font")
+    If fontObjText <> "" Then
+        Dim fontName As String
+        Dim fontSize As String
+        Dim fontBold As Boolean
+        Dim fontItalic As Boolean
+        fontName = GetJsonString(fontObjText, "name")
+        fontSize = CStr(GetJsonNumber(fontObjText, "size"))
+        fontBold = GetJsonBoolean(fontObjText, "bold")
+        fontItalic = GetJsonBoolean(fontObjText, "italic")
+        If fontName <> "" Then dict("font.name") = fontName
+        If IsNumeric(fontSize) Then dict("font.size") = CLng(fontSize)
+        dict("font.bold") = fontBold
+        dict("font.italic") = fontItalic
+    End If
+    
     Set ParseControlObject = dict
 End Function
 
@@ -517,6 +618,13 @@ Private Function CreateFormDirect(formName As String, appPath As String) As Bool
         Set design = LoadJSON(designPath)
         If Not design Is Nothing Then
             Call ApplyDesign(formComp, design)
+        End If
+    End If
+    
+    ' Warn on design form name mismatch in CreateFormDirect before ApplyDesign:
+    If design.Exists("name") Then
+        If Len(design("name")) > 0 And UCase$(design("name")) <> UCase$(formName) Then
+            Debug.Print "Warning: design.json form name (" & design("name") & ") differs from manifest form ('" & formName & "'). Using manifest name."
         End If
     End If
     
@@ -633,6 +741,12 @@ Private Sub CreateSingleControl(formObj As Object, controlDict As Object)
     If controlDict.Exists("width") Then ctrl.Width = CLng(controlDict("width"))
     If controlDict.Exists("height") Then ctrl.Height = CLng(controlDict("height"))
 
+    ' Apply font in CreateSingleControl after size/height assignments:
+    If controlDict.Exists("font.name") Then ctrl.Font.Name = CStr(controlDict("font.name"))
+    If controlDict.Exists("font.size") Then ctrl.Font.Size = CLng(controlDict("font.size"))
+    If controlDict.Exists("font.bold") Then ctrl.Font.Bold = CBool(controlDict("font.bold"))
+    If controlDict.Exists("font.italic") Then ctrl.Font.Italic = CBool(controlDict("font.italic"))
+
     ' Allow VBE to process control
     DoEvents
     Sleep CONTROL_DELAY
@@ -721,3 +835,40 @@ Private Function ImportModule(moduleName As String, filePath As String) As Boole
 ErrorHandler:
     ImportModule = False
 End Function
+
+' Add reference processing
+Private Sub ProcessReferences(manifest As Object)
+    On Error Resume Next
+    If manifest Is Nothing Then Exit Sub
+    If Not manifest.Exists("references") Then Exit Sub
+    If manifest("references") = "" Then Exit Sub
+    
+    Dim refs As Variant
+    refs = Split(manifest("references"), ",")
+    Dim i As Integer, refName As String
+    For i = 0 To UBound(refs)
+        refName = Trim$(refs(i))
+        If refName <> "" Then EnsureReferenceByName refName
+    Next i
+End Sub
+
+Private Sub EnsureReferenceByName(referenceName As String)
+    On Error Resume Next
+    Dim vbProj As Object
+    Set vbProj = GetVBProject()
+    If vbProj Is Nothing Then Exit Sub
+    
+    Dim r As Object
+    For Each r In vbProj.References
+        If StrComp(r.Description, referenceName, vbTextCompare) = 0 _
+           Or StrComp(r.Name, referenceName, vbTextCompare) = 0 Then Exit Sub
+        If InStr(1, referenceName, r.Description, vbTextCompare) > 0 Then Exit Sub
+    Next r
+    
+    Select Case LCase$(referenceName)
+        Case LCase$("Microsoft Forms 2.0 Object Library"), LCase$("MSForms"), LCase$("Forms 2.0")
+            vbProj.References.AddFromGuid "{0D452EE1-E08F-101A-852E-02608C4D0BB4}", 2, 0
+        Case Else
+            Debug.Print "Reference not auto-added (unknown mapping): " & referenceName
+    End Select
+End Sub

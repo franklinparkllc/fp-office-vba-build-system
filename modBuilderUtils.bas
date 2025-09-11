@@ -9,15 +9,21 @@ Option Explicit
 Public Function ReadTextFile(filePath As String) As String
     On Error GoTo ErrorHandler
     
-    Dim fileNum As Integer
-    fileNum = FreeFile
-    Open filePath For Input As #fileNum
-    ReadTextFile = Input$(LOF(fileNum), #fileNum)
-    Close #fileNum
+    Dim stream As Object
+    Set stream = CreateObject("ADODB.Stream")
+    With stream
+        .Type = 2 ' adTypeText
+        .Charset = "utf-8"
+        .Open
+        .LoadFromFile filePath
+        ReadTextFile = .ReadText(-1) ' adReadAll
+        .Close
+    End With
     Exit Function
     
 ErrorHandler:
-    If fileNum > 0 Then Close #fileNum
+    On Error Resume Next
+    If Not stream Is Nothing Then stream.Close
     ReadTextFile = ""
 End Function
 
@@ -48,7 +54,8 @@ Public Sub ForceProjectStateSave()
     
     Dim hostDoc As Object
     Set hostDoc = GetVBProject().Parent
-    If Not hostDoc Is Nothing And hostDoc.Path <> "" And Not hostDoc.Saved Then
+    If Not hostDoc Is Nothing And hostDoc.Path <> "" Then
+        If hostDoc.Saved Then hostDoc.Saved = False
         hostDoc.Save
     End If
 End Sub
@@ -103,7 +110,7 @@ End Function
 Public Sub ShowSystemStatus()
     Dim msg As String
     msg = "=== VBA Builder Status ===" & vbCrLf & vbCrLf
-    msg = msg & "Version: 1.0.0 (Refactored)" & vbCrLf
+    msg = msg & "Version: 1.0.1 (Refactored)" & vbCrLf
     msg = msg & "Source Path: " & IIf(GetSourcePath() = "", "(not set)", GetSourcePath()) & vbCrLf
     
     Dim apps As Collection
@@ -119,7 +126,7 @@ Public Sub ShowSystemStatus()
 End Sub
 
 ' Set the source path to a new location (internal use)
-Private Sub SetSourcePath(newPath As String)
+Public Sub SetSourcePath(newPath As String)
     ' Remove trailing backslash if present
     If Right(newPath, 1) = "\" Then newPath = Left(newPath, Len(newPath) - 1)
     
@@ -150,4 +157,9 @@ Private Sub SetSourcePath(newPath As String)
     End If
     
     MsgBox msg, vbInformation, "Source Path Updated"
+End Sub
+
+Public Sub UpdateStatusVersionTo101()
+    ' Helper to keep status version consistent
+    ' This is a no-op placeholder; version string is hardcoded in ShowSystemStatus.
 End Sub
