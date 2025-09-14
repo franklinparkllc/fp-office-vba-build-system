@@ -2,12 +2,12 @@ Attribute VB_Name = "modAppBuilder"
 ' =====================================================================================
 ' VBA APPLICATION BUILDER - UNIFIED BUILD SYSTEM
 ' =====================================================================================
-' Version: 2.1.0
+' Version: 0.2.0 - Direct app folder selection
 '
 ' QUICK START:
 ' 1. Import this module into your VBA project
-' 2. Call Build() - prompts for source folder and shows available apps
-' 3. Call BuildApplication("AppName") - prompts for folder then builds app
+' 2. Call Build() - prompts for app folder and builds it
+' 3. Call BuildApplication("C:\Path\To\App") - builds specific app folder
 '
 ' FEATURES:
 ' • Direct form creation via VBA object model
@@ -15,7 +15,7 @@ Attribute VB_Name = "modAppBuilder"
 ' • Automatic module and form importing
 ' • Enhanced error reporting and progress tracking
 ' • Auto-save and quality of life improvements
-' • No persistent configuration - fresh folder selection each time
+' • Direct app folder selection - no parent folder confusion
 ' =====================================================================================
 
 Option Explicit
@@ -47,29 +47,27 @@ Private currentStep As Integer
 ' =====================================================================================
 
 ' Build application from source
-Public Sub BuildApplication(appName As String, Optional sourcePath As String = "")
+Public Sub BuildApplication(Optional appPath As String = "")
     On Error GoTo ErrorHandler
     
     ' Initialize progress tracking
     ResetProgress
     
-    ' Always prompt for source path if not provided
-    If sourcePath = "" Then
-        sourcePath = PromptForSourcePath()
-        If sourcePath = "" Then
-            MsgBox "Build cancelled - no source folder selected.", vbInformation
+    ' Always prompt for app folder if not provided
+    If appPath = "" Then
+        appPath = PromptForAppFolder()
+        If appPath = "" Then
+            MsgBox "Build cancelled - no app folder selected.", vbInformation
             Exit Sub
         End If
     End If
     
     UpdateProgress "Validating application path..."
     
-    Dim appPath As String
-    appPath = sourcePath & "\" & appName
-    
+    ' Check if manifest.json exists in the selected folder
     If Dir(appPath & "\manifest.json") = "" Then
-        ShowError "BuildApplication", 0, "Application not found: " & appPath, _
-                  "Ensure manifest.json exists in: " & appPath
+        ShowError "BuildApplication", 0, "No manifest.json found in: " & appPath, _
+                  "Please select a folder containing manifest.json"
         Exit Sub
     End If
     
@@ -86,8 +84,13 @@ Public Sub BuildApplication(appName As String, Optional sourcePath As String = "
     ' Calculate total steps for progress
     CalculateBuildSteps manifest
     
-    MsgBox "🔨 Building: " & appName & vbCrLf & _
-           "📁 Source: " & appPath & vbCrLf & vbCrLf & _
+    ' Get app name from manifest
+    Dim appName As String
+    appName = manifest("name")
+    If appName = "" Then appName = "Application"
+    
+    MsgBox "Building: " & appName & vbCrLf & _
+           "Source: " & appPath & vbCrLf & vbCrLf & _
            "Check Immediate window for progress...", vbInformation
     
     ' Process references from manifest (if any)
@@ -117,21 +120,21 @@ Public Sub BuildApplication(appName As String, Optional sourcePath As String = "
             Dim f As Integer
             For f = 0 To UBound(builtForms)
                 If Trim(builtForms(f)) <> "" Then
-                    formLaunchHints = formLaunchHints & "   • Type: " & Trim(builtForms(f)) & ".Show" & vbCrLf
+                    formLaunchHints = formLaunchHints & "   - Type: " & Trim(builtForms(f)) & ".Show" & vbCrLf
                 End If
             Next f
         End If
-        If formLaunchHints = "" Then formLaunchHints = "   • Type: <YourFormName>.Show" & vbCrLf
+        If formLaunchHints = "" Then formLaunchHints = "   - Type: <YourFormName>.Show" & vbCrLf
         
-        successMsg = "✅ Build completed successfully!" & vbCrLf & vbCrLf & _
+        successMsg = "Build completed successfully!" & vbCrLf & vbCrLf & _
                     "Application: " & appName & vbCrLf & vbCrLf & _
-                    "🚀 To test your form:" & vbCrLf & _
+                    "To test your form:" & vbCrLf & _
                     formLaunchHints & _
-                    "   • Press Enter in Immediate window" & vbCrLf & vbCrLf & _
-                    "💡 " & currentStep & " of " & totalSteps & " steps completed"
+                    "   - Press Enter in Immediate window" & vbCrLf & vbCrLf & _
+                    "Steps completed: " & currentStep & " of " & totalSteps
         
         MsgBox successMsg, vbInformation, "VBA App Builder - Success!"
-        UpdateProgress "Build completed successfully! ✅"
+        UpdateProgress "Build completed successfully!"
     Else
         ShowError "BuildApplication", 0, "Build failed", _
                   "Check Immediate window for detailed error information."
@@ -143,55 +146,15 @@ ErrorHandler:
               "Unexpected error during build process."
 End Sub
 
-' Build - prompts for source folder and shows available apps
+' Build - prompts for app folder and builds it
 Public Sub Build()
     On Error GoTo ErrorHandler
     
-    ' Always prompt for source folder
-    Dim sourcePath As String
-    sourcePath = PromptForSourcePath()
-    If sourcePath = "" Then
-        MsgBox "Build cancelled - no source folder selected.", vbInformation
-        Exit Sub
-    End If
-    
-    Dim apps As Collection
-    Set apps = GetAvailableApps(sourcePath)
-    
-    If apps.Count = 0 Then
-        ShowError "Build", 0, "No applications found in: " & sourcePath, _
-                  "Ensure source folder contains subfolders with manifest.json files."
-        Exit Sub
-    End If
-    
-    Dim msg As String, i As Integer
-    msg = "VBA App Builder - Select Application to Build:" & vbCrLf & vbCrLf
-    msg = msg & "📁 Source: " & sourcePath & vbCrLf & vbCrLf
-    For i = 1 To apps.Count
-        msg = msg & i & ". " & apps(i) & vbCrLf
-    Next i
-    msg = msg & vbCrLf & "Enter the number of the application to build:"
-    
-    Dim choice As String
-    choice = InputBox(msg, "VBA App Builder", "1")
-    If choice = "" Then Exit Sub
-    
-    If IsNumeric(choice) Then
-        Dim sel As Integer
-        sel = CInt(choice)
-        If sel >= 1 And sel <= apps.Count Then
-            Call BuildApplication(apps(sel), sourcePath)
-        Else
-            ShowError "Build", 0, "Invalid selection", _
-                      "Please enter a number between 1 and " & apps.Count
-        End If
-    Else
-        ShowError "Build", 0, "Invalid input", _
-                  "Please enter a valid number."
-    End If
+    ' Simply call BuildApplication which will prompt for folder
+    Call BuildApplication
     Exit Sub
     
-ErrorHandler:
+    ErrorHandler:
     ShowError "Build", Err.Number, Err.Description
 End Sub
 
@@ -221,12 +184,12 @@ End Sub
 ' Enhanced error display with context and recovery suggestions
 Private Sub ShowError(context As String, errNum As Long, errDesc As String, Optional suggestion As String = "")
     Dim msg As String
-    msg = "❌ Error in " & context
+    msg = "Error in " & context
     If errNum <> 0 Then msg = msg & " (#" & errNum & ")"
     msg = msg & vbCrLf & vbCrLf & "Details: " & errDesc
     
     If suggestion <> "" Then
-        msg = msg & vbCrLf & vbCrLf & "💡 Suggestion: " & suggestion
+        msg = msg & vbCrLf & vbCrLf & "Suggestion: " & suggestion
     End If
     
     MsgBox msg, vbCritical, "VBA App Builder Error"
@@ -276,7 +239,9 @@ Private Sub UpdateProgress(operation As String)
     If totalSteps > 0 Then
         Dim pct As Integer
         pct = Int((currentStep / totalSteps) * 10)
-        progressBar = String(pct, "█") & String(10 - pct, "░")
+        If pct > 10 Then pct = 10
+        If pct < 0 Then pct = 0
+        progressBar = String(pct, ChrW(&H2588)) & String(10 - pct, ChrW(&H2591))
     End If
     
     buildProgress = "[" & progressBar & "] " & operation
@@ -292,6 +257,8 @@ End Sub
 Private Function LoadJSON(filePath As String) As Object
     On Error GoTo ErrorHandler
     
+    Debug.Print "Loading JSON from: " & filePath
+    
     Dim content As String
     content = ReadTextFile(filePath)
     If content = "" Then
@@ -300,7 +267,20 @@ Private Function LoadJSON(filePath As String) As Object
         Exit Function
     End If
     
-    ' Strip comments before parsing
+    Debug.Print "File content length: " & Len(content)
+    Debug.Print "First 50 chars: " & Left(content, 50)
+    
+    ' Try parsing without comment stripping first
+    On Error Resume Next
+    Set LoadJSON = ParseJSON(content)
+    If Not LoadJSON Is Nothing Then
+        Debug.Print "Successfully parsed JSON without comment stripping"
+        Exit Function
+    End If
+    On Error GoTo ErrorHandler
+    
+    ' If that failed, try with comment stripping
+    Debug.Print "Trying with comment stripping..."
     content = StripJSONComments(content)
     
     ' Validate JSON structure
@@ -323,6 +303,8 @@ End Function
 
 ' Strip single-line comments from JSON
 Private Function StripJSONComments(jsonText As String) As String
+    On Error GoTo ErrorHandler
+    
     Dim lines() As String
     Dim cleanLines() As String
     Dim i As Long
@@ -331,7 +313,22 @@ Private Function StripJSONComments(jsonText As String) As String
     Dim j As Long
     Dim char As String
     
-    lines = Split(jsonText, vbCrLf)
+    Debug.Print "StripJSONComments: Input length = " & Len(jsonText)
+    
+    ' Handle different line endings
+    Dim normalizedText As String
+    normalizedText = Replace(jsonText, vbCrLf, vbLf)
+    normalizedText = Replace(normalizedText, vbCr, vbLf)
+    
+    Debug.Print "StripJSONComments: After normalization length = " & Len(normalizedText)
+    
+    lines = Split(normalizedText, vbLf)
+    Debug.Print "StripJSONComments: Number of lines = " & (UBound(lines) + 1)
+    
+    If UBound(lines) < 0 Then
+        StripJSONComments = jsonText
+        Exit Function
+    End If
     ReDim cleanLines(UBound(lines))
     
     For i = 0 To UBound(lines)
@@ -359,22 +356,36 @@ Private Function StripJSONComments(jsonText As String) As String
         cleanLines(i) = RTrim(line)
     Next i
     
-    StripJSONComments = Join(cleanLines, vbCrLf)
+    StripJSONComments = Join(cleanLines, vbLf)
+    Exit Function
+    
+ErrorHandler:
+    Debug.Print "Error in StripJSONComments: " & Err.Description & " (Line: " & Erl & ")"
+    StripJSONComments = jsonText ' Return original text if error
 End Function
 
 ' Validate JSON structure and report specific errors
 Private Function ValidateJSONStructure(jsonText As String) As String
+    On Error GoTo ErrorHandler
+    
     Dim braceCount As Long, bracketCount As Long
     Dim i As Long, lineNum As Long
     Dim char As String, prevChar As String
     Dim inString As Boolean
     Dim lines() As String
     
-    lines = Split(jsonText, vbCrLf)
+    Debug.Print "ValidateJSONStructure: Input length = " & Len(jsonText)
+    
+    ' Normalize line endings first
+    Dim normalizedText As String
+    normalizedText = Replace(jsonText, vbCrLf, vbLf)
+    normalizedText = Replace(normalizedText, vbCr, vbLf)
+    
+    lines = Split(normalizedText, vbLf)
     lineNum = 1
     
-    For i = 1 To Len(jsonText)
-        char = Mid(jsonText, i, 1)
+    For i = 1 To Len(normalizedText)
+        char = Mid(normalizedText, i, 1)
         
         ' Track line numbers
         If char = vbLf Then lineNum = lineNum + 1
@@ -417,6 +428,11 @@ Private Function ValidateJSONStructure(jsonText As String) As String
     Else
         ValidateJSONStructure = ""
     End If
+    Exit Function
+    
+ErrorHandler:
+    Debug.Print "Error in ValidateJSONStructure: " & Err.Description
+    ValidateJSONStructure = "Validation error: " & Err.Description
 End Function
 
 ' Simple JSON parser for manifest and design files
@@ -1113,6 +1129,7 @@ End Sub
 Public Function ReadTextFile(filePath As String) As String
     On Error GoTo ErrorHandler
     
+    ' Try ADODB.Stream first (supports UTF-8)
     Dim stream As Object
     Set stream = CreateObject("ADODB.Stream")
     With stream
@@ -1128,6 +1145,20 @@ Public Function ReadTextFile(filePath As String) As String
 ErrorHandler:
     On Error Resume Next
     If Not stream Is Nothing Then stream.Close
+    
+    ' Fallback to standard VBA file reading
+    On Error GoTo FileError
+    Dim fileNum As Integer
+    Dim fileContent As String
+    fileNum = FreeFile
+    Open filePath For Input As #fileNum
+    fileContent = Input$(LOF(fileNum), fileNum)
+    Close #fileNum
+    ReadTextFile = fileContent
+    Exit Function
+    
+FileError:
+    Debug.Print "Error reading file " & filePath & ": " & Err.Description
     ReadTextFile = ""
 End Function
 
@@ -1186,46 +1217,36 @@ Private Sub SetAutoSaveEnabled(value As Boolean)
     SaveSetting "VBAAppBuilder", "Config", "AutoSave", IIf(value, "1", "0")
 End Sub
 
-' Prompt the user to select a folder when SourcePath is not yet stored
-Public Function PromptForSourcePath() As String
+' Prompt the user to select an app folder
+Public Function PromptForAppFolder() As String
     On Error GoTo UseInputBox
     Dim fd As Object: Set fd = Application.FileDialog(4) ' msoFileDialogFolderPicker
     With fd
-        .Title = "Select VBA Source Folder"
+        .Title = "Select App Folder (containing manifest.json)"
         .AllowMultiSelect = False
-        If .Show = -1 Then PromptForSourcePath = .SelectedItems(1)
+        If .Show = -1 Then PromptForAppFolder = .SelectedItems(1)
     End With
     Exit Function
 UseInputBox:
-    PromptForSourcePath = InputBox("Enter source folder path:", "VBA App Builder", "C:\YourProject\src")
+    PromptForAppFolder = InputBox("Enter app folder path:", "VBA App Builder", "C:\YourProject\ExampleApp")
 End Function
 
-' Return a list of sub-folders that contain a manifest.json
-Public Function GetAvailableApps(sourcePath As String) As Collection
-    Dim apps As New Collection, fso As Object, fld As Object, subFld As Object
-    Set fso = CreateObject("Scripting.FileSystemObject")
-    If sourcePath = "" Or Not fso.FolderExists(sourcePath) Then Set GetAvailableApps = apps: Exit Function
-    Set fld = fso.GetFolder(sourcePath)
-    For Each subFld In fld.SubFolders
-        If Dir(subFld.Path & "\manifest.json") <> "" Then apps.Add subFld.Name
-    Next subFld
-    Set GetAvailableApps = apps
-End Function
 
 ' Show system status and available commands
 Public Sub ShowSystemStatus()
     Dim msg As String
     msg = "=== VBA App Builder Status ===" & vbCrLf & vbCrLf
-    msg = msg & "Version: 2.1.0 (Simplified Edition)" & vbCrLf
+    msg = msg & "Version: 2.2.0 (Direct App Folder Selection)" & vbCrLf
     msg = msg & "Auto-Save: " & IIf(GetAutoSaveEnabled(), "Enabled", "Disabled") & vbCrLf & vbCrLf
     
     msg = msg & "Commands:" & vbCrLf
-    msg = msg & "• Build() - Browse for source folder and select app to build" & vbCrLf
-    msg = msg & "• BuildApplication(""AppName"") - Build specific app (prompts for folder)" & vbCrLf
+    msg = msg & "• Build() - Browse for app folder and build it" & vbCrLf
+    msg = msg & "• BuildApplication() - Same as Build()" & vbCrLf
+    msg = msg & "• BuildApplication(""C:\Path\To\App"") - Build specific app folder" & vbCrLf
     msg = msg & "• ConfigureAutoSave() - Toggle auto-save preference" & vbCrLf
     msg = msg & "• ShowSystemStatus() - Display this information" & vbCrLf & vbCrLf
     
-    msg = msg & "💡 Tip: You'll be prompted to select the source folder each time you build."
+    msg = msg & "💡 Tip: Select the folder containing manifest.json (e.g., ExampleApp folder)."
     
     MsgBox msg, vbInformation, "VBA App Builder Status"
 End Sub

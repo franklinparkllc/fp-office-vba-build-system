@@ -47,19 +47,22 @@ Set comp = vbProj.VBComponents.Import(filePath)
 ' Add event handlers and logic to a form
 formComp.CodeModule.AddFromString codeContent
 ```
-## 🏗️ **System Architecture (v2.1 - Simplified Edition)**
+## 🏗️ **System Architecture (v2.2 - Direct App Folder Selection)**
 **Single-module design**: Everything you need in one file with zero configuration.
 
-### **👤 User Experience - Just 2 Main Functions!**
+### **👤 User Experience - Just 1 Main Function!**
 ```vba
-Call Build()                        ' Browse for folder, select app, build
-Call BuildApplication("AppName")    ' Browse for folder, build specific app
+Call Build()                        ' Browse for app folder and build it
+' or
+Call BuildApplication()             ' Same as Build()
+Call BuildApplication("C:\Path\To\App")  ' Build specific app folder directly
 ```
 
 ### **modAppBuilder.bas** - Complete Build System
 - **🎯 User Functions**:
-  - `Build()` - Browse for source folder and select app to build
-  - `BuildApplication(appName)` - Build specific app (prompts for folder)
+  - `Build()` - Browse for app folder containing manifest.json and build it
+  - `BuildApplication()` - Same as Build() (prompts for folder)
+  - `BuildApplication("path")` - Build specific app folder directly
   - `ConfigureAutoSave()` - Toggle auto-save preference
   - `ShowSystemStatus()` - Display version and available commands
 - **🔧 Core Features**:
@@ -80,7 +83,7 @@ Call BuildApplication("AppName")    ' Browse for folder, build specific app
 ## 📁 **Project Structure**
 ```
 fp-office-vba-build-system/
-├── modAppBuilder.bas      # Complete build system (v2.1)
+├── modAppBuilder.bas      # Complete build system (v2.2)
 ├── ExampleApp/            # Reference application (at root for easy access)
 │   ├── manifest.json      # App config: name, modules, forms
 │   ├── modules/
@@ -111,11 +114,12 @@ fp-office-vba-build-system/
 ```vba
 ' Open the Immediate Window (View -> Immediate Window or Ctrl+G) and run:
 
-' Build apps (browse for folder, select app)
+' Build an app (browse and select the app folder)
 Call Build()
+' When prompted, select the ExampleApp folder (or any folder with manifest.json)
 
-' Or build specific app directly
-Call BuildApplication("ExampleApp")
+' Or build specific app directly with path
+Call BuildApplication("C:\Users\YourName\Documents\GitHub\fp-office-vba-build-system\ExampleApp")
 
 ' Optional: Configure auto-save
 Call ConfigureAutoSave()
@@ -187,10 +191,11 @@ frmMyForm.Caption = "New Title"
 - The build process ensures these objects are created before your code runs. Do not write code that references ephemeral placeholder names such as `UserForm1`, as they are not guaranteed to exist.
 ## 📚 **Reference Applications**
 ### **ExampleApp** - Reference Template 🎯
-- **Purpose**: A comprehensive template for developers and AI assistants.
-- **Features**: A fully annotated application demonstrating all VBA Build System patterns.
+- **Purpose**: A complete working example demonstrating all VBA App Builder patterns.
+- **Features**: Forms, modules, event handlers, and proper project structure.
 - **Use Case**: Copy this structure when creating new applications.
 - **Location**: `ExampleApp/` (at root level for easy access)
+- **Documentation**: See `ExampleApp/README.md` for quick reference
 ### **FundSelector** - Production Example
 - **Purpose**: A database-driven fund selection tool.
 - **Features**: Demonstrates Azure SQL connectivity and a professional UI.
@@ -198,8 +203,9 @@ frmMyForm.Caption = "New Title"
 ## 🔧 **System Commands**
 ```vba
 ' 🎯 Essential Commands
-Call Build()                         ' Browse for folder, show menu, build selected app
-Call BuildApplication("AppName")     ' Browse for folder, build specific app
+Call Build()                         ' Browse for app folder and build it
+Call BuildApplication()              ' Same as Build()
+Call BuildApplication("C:\Path")     ' Build specific app folder
 
 ' 🔧 Configuration & Info
 Call ConfigureAutoSave()             ' Toggle auto-save on/off
@@ -218,14 +224,14 @@ The system uses a robust, multi-step process to overcome the quirks of the VBE a
 6.  **Save**: The host document is saved to persist all changes to the VBA project.
 ## 🚨 **Troubleshooting**
 ### **Common Issues**
-1.  **"VBA Project access is disabled"**
+1.  **"No manifest.json found"**
+    -   ✅ Select the app folder directly (e.g., ExampleApp), not a parent folder
+    -   ✅ Ensure the selected folder contains a `manifest.json` file
+2.  **"VBA Project access is disabled"**
     -   ✅ Enable "Trust access to the VBA project object model" in Trust Center and restart.
-2.  **"Build failed during processing"**
-    -   ✅ Check the file paths shown in `ShowSystemStatus()`.
+3.  **"Build failed during processing"**
+    -   ✅ Check the file paths in the error message.
     -   ✅ Verify the syntax of your `manifest.json` and `design.json` files.
-3.  **"Application not found"**
-    -   ✅ Check `ShowSystemStatus()` to see available applications.
-    -   ✅ Ensure your application folder in `src` contains a valid `manifest.json`.
 ### **Diagnostic Steps**
 ```vba
 ' Step 1: Check system status
@@ -254,14 +260,15 @@ Call ConfigureAutoSave()
 -   **Single Module**: Everything in one file - simpler to understand and generate for.
 ---
 ## 🎉 **Ready for Modern VBA Development?**
-The **v2.1 system** brings zero-configuration simplicity with enhanced user experience!
+The **v2.2 system** brings direct app folder selection with zero configuration!
 
 ```vba
 ' Ultra-simple workflow:
-Call Build()         ' Browse, select, build - all in one!
+Call Build()         ' Browse to app folder, build - done!
 ```
 
-**What's New in v2.1:**
+**What's New in v2.2:**
+- 📁 **Direct App Folder Selection** - Select the app folder, not parent folders
 - 🚀 **Zero Configuration** - No setup, no stored paths
 - 📊 **Progress Tracking** - See build progress in real-time
 - 💬 **JSON Comments** - Add documentation to your config files
