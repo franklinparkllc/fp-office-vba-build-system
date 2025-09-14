@@ -118,48 +118,8 @@ Public Sub ShowSystemStatus()
     msg = msg & "Available Apps: " & apps.Count & vbCrLf & vbCrLf
     
     msg = msg & "Commands:" & vbCrLf
-    msg = msg & "• Initialize() - Setup/change source folder" & vbCrLf
-    msg = msg & "• Build() - Show menu and build an app" & vbCrLf
-    msg = msg & "• BuildApplication(""AppName"") - Build specific app"
+    msg = msg & "• Build() - Main entry point (auto-initializes if needed)" & vbCrLf
+    msg = msg & "• BuildApplication(""AppName"") - Build specific app directly"
     
     MsgBox msg, vbInformation, "VBA Builder Status"
-End Sub
-
-' Set the source path to a new location (internal use)
-Public Sub SetSourcePath(newPath As String)
-    ' Remove trailing backslash if present
-    If Right(newPath, 1) = "\" Then newPath = Left(newPath, Len(newPath) - 1)
-    
-    ' Validate the path exists
-    If Dir(newPath, vbDirectory) = "" Then
-        MsgBox "Error: Path does not exist: " & newPath, vbCritical, "Invalid Path"
-        Exit Sub
-    End If
-    
-    ' Save the new path
-    SaveSourcePath newPath
-    
-    ' Show confirmation with available apps
-    Dim apps As Collection
-    Set apps = GetAvailableApps()
-    
-    Dim msg As String
-    msg = "✅ Source path updated successfully!" & vbCrLf & vbCrLf
-    msg = msg & "New Path: " & newPath & vbCrLf
-    msg = msg & "Available Apps: " & apps.Count
-    
-    If apps.Count > 0 Then
-        msg = msg & vbCrLf & vbCrLf & "Found applications:"
-        Dim i As Integer
-        For i = 1 To apps.Count
-            msg = msg & vbCrLf & "• " & apps(i)
-        Next i
-    End If
-    
-    MsgBox msg, vbInformation, "Source Path Updated"
-End Sub
-
-Public Sub UpdateStatusVersionTo101()
-    ' Helper to keep status version consistent
-    ' This is a no-op placeholder; version string is hardcoded in ShowSystemStatus.
 End Sub

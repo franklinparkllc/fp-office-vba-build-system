@@ -5,8 +5,8 @@ Attribute VB_Name = "modBuildSystem"
 ' Version: 1.0.1 - Refactored and simplified
 '
 ' QUICK START:
-' 1. Call Initialize() to setup
-' 2. Call BuildApplication("AppName") to build
+' 1. Call Build() - automatically initializes if needed
+' 2. Call BuildApplication("AppName") to build specific app directly
 '
 ' FEATURES:
 ' • Direct form creation via VBA object model
@@ -42,7 +42,7 @@ Private sourcePath As String
 ' =====================================================================================
 
 ' Initialize the build system - prompts for source folder
-Public Sub Initialize()
+Private Sub Initialize()
     On Error GoTo ErrorHandler
     
     If Not ValidateTrustSettings() Then Exit Sub
@@ -143,19 +143,24 @@ Public Sub Build()
         If sourcePath = "" Then Exit Sub
     End If
     
+    ' Show system status for user information
+    Call ShowSystemStatus
+    
     Dim apps As Collection
     Set apps = GetAvailableApps()
     
     If apps.Count = 0 Then
-        MsgBox "No applications found in: " & sourcePath & vbCrLf & vbCrLf & "Run Initialize() to change the source folder.", vbExclamation
+        MsgBox "No applications found in: " & sourcePath & vbCrLf & vbCrLf & "The source folder may be empty or invalid.", vbExclamation
         Exit Sub
     End If
     
     Dim msg As String, i As Integer
-    msg = "Select Application to Build:" & vbCrLf & vbCrLf
+    msg = "VBA Builder - Select Application to Build:" & vbCrLf & vbCrLf
+    msg = msg & "Source: " & sourcePath & vbCrLf & vbCrLf
     For i = 1 To apps.Count
         msg = msg & i & ". " & apps(i) & vbCrLf
     Next i
+    msg = msg & vbCrLf & "Enter the number of the application to build:"
     
     Dim choice As String
     choice = InputBox(msg, "VBA Builder", "1")
@@ -166,7 +171,11 @@ Public Sub Build()
         sel = CInt(choice)
         If sel >= 1 And sel <= apps.Count Then
             Call BuildApplication(apps(sel))
+        Else
+            MsgBox "Invalid selection. Please enter a number between 1 and " & apps.Count, vbExclamation
         End If
+    Else
+        MsgBox "Please enter a valid number.", vbExclamation
     End If
     Exit Sub
     
