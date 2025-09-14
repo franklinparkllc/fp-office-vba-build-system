@@ -1,19 +1,20 @@
-# VBA Builder - A Modern Build System for Microsoft Office
+# VBA App Builder - A Modern Build System for Microsoft Office
 ## 🚀 Overview
 Modern build system for VBA development, optimized for AI-driven workflows. This system transforms VBA development by enabling version control, automated builds, and modern development practices with minimal complexity.
 ## ✨ What Makes This Special
-### **Before VBA Builder**
+### **Before VBA App Builder**
 - ❌ Code trapped inside Office documents
 - ❌ No version control for VBA code
 - ❌ Manual, error-prone form creation and management
 - ❌ No automated deployment process
 
-### **After VBA Builder**
+### **After VBA App Builder**
 - ✅ **Source-Controlled Code**: All VBA code lives in text files, perfect for Git.
 - ✅ **Automated Form Generation**: Build complex UserForms directly from `design.json` files.
-- ✅ **Minimal Dependencies**: The entire build system is self-contained in a single VBA module.
+- ✅ **Zero Configuration**: No persistent settings - select your source folder each time you build.
+- ✅ **Single Module Simplicity**: The entire build system in one self-contained VBA module.
 - ✅ **AI-Optimized**: Designed for agentic workflows, enabling AI to generate, build, and test applications.
-- ✅ **Radical Simplicity**: 80% less code than traditional build systems, but with the same power.
+- ✅ **Enhanced UX**: Progress tracking, better error messages, and auto-save options.
 
 ## 🔧 How It Works: The Direct Injection Method
 The build system works by directly manipulating the VBA project within the host Office application (Word, Excel, etc.). It reads source files from your `src` directory and injects them into the VBA environment.
@@ -46,84 +47,80 @@ Set comp = vbProj.VBComponents.Import(filePath)
 ' Add event handlers and logic to a form
 formComp.CodeModule.AddFromString codeContent
 ```
-## 🏗️ **System Architecture (v1.0 - Simplified)**
-**Two-module design**: Dead simple user experience with powerful features under the hood.
+## 🏗️ **System Architecture (v2.1 - Simplified Edition)**
+**Single-module design**: Everything you need in one file with zero configuration.
 
-### **👤 User Experience - Just 2 Functions!**
+### **👤 User Experience - Just 2 Main Functions!**
 ```vba
-Call Initialize()    ' Setup (one-time, opens folder picker)
-Call Build()         ' Build apps (shows menu, auto-initializes)
+Call Build()                        ' Browse for folder, select app, build
+Call BuildApplication("AppName")    ' Browse for folder, build specific app
 ```
 
-### **modBuildSystem.bas** - Core Build Engine
+### **modAppBuilder.bas** - Complete Build System
 - **🎯 User Functions**:
-  - `Initialize()` - One-time setup with folder picker
-  - `Build()` - Shows available apps, builds selected one
-  - `BuildApplication(appName)` - Direct build for specific app
-  - `ShowSystemStatus()` - Check current configuration
-- **🔧 Internal Engine**:
-  - `CreateFormDirect()` - Robust form creation with new schema support
-  - `ProcessModules()` - Module importing
-  - `ApplyDesign()` - Form design application with improved JSON parsing
-
-### **modBuilderUtils.bas** - Utility Functions
-- **File & Project Management**: Safe file I/O, VBA project manipulation
-- **Configuration Management**: Persistent settings, path validation
-- **System Validation**: Trust settings, folder scanning, error handling
+  - `Build()` - Browse for source folder and select app to build
+  - `BuildApplication(appName)` - Build specific app (prompts for folder)
+  - `ConfigureAutoSave()` - Toggle auto-save preference
+  - `ShowSystemStatus()` - Display version and available commands
+- **🔧 Core Features**:
+  - `CreateFormDirect()` - Robust form creation with enhanced error handling
+  - `ProcessModules()` - Module importing with progress tracking
+  - `JSON Comment Support` - Allows // comments in JSON files
+  - `JSON Validation` - Reports line numbers for syntax errors
+  - `Progress Tracking` - Real-time build progress in Immediate window
 
 ### **🚀 Key Features**:
-- ✅ **Dead Simple**: 2-function user experience
-- ✅ **Auto-Initialization**: Build functions set up automatically
-- ✅ **Persistent Settings**: Set source path once, works forever
-- ✅ **New JSON Schema**: Clean separation of form properties and controls
-- ✅ **Folder Picker**: No typing file paths
+- ✅ **Zero Configuration**: No setup required - just import and use
+- ✅ **Single Module**: All functionality in one easy-to-distribute file
+- ✅ **Fresh Folder Selection**: Choose your project folder each time
+- ✅ **Enhanced Error Messages**: Helpful suggestions for common issues
+- ✅ **Progress Tracking**: See exactly what's happening during builds
+- ✅ **JSON Comments**: Add // comments to your JSON files
+- ✅ **Auto-Save Option**: Optionally save project after successful builds
 ## 📁 **Project Structure**
 ```
-YourProject/
-├── modBuildSystem.bas     # Core build engine (v1.0)
-├── modBuilderUtils.bas    # Utility functions
-└── src/                   # Your application source files
-    ├── ExampleApp/        # A reference application
-    │   ├── manifest.json  # App config: name, modules, forms
-    │   ├── modules/
-    │   │   └── modExampleApp.vba
-    │   └── forms/
-    │       └── frmExampleApp/
-    │           ├── design.json      # Form layout: size, caption, controls
-    │           └── code-behind.vba  # The form's event-handling code
-    └── YourApp/           # Your new application
+fp-office-vba-build-system/
+├── modAppBuilder.bas      # Complete build system (v2.1)
+├── ExampleApp/            # Reference application (at root for easy access)
+│   ├── manifest.json      # App config: name, modules, forms
+│   ├── modules/
+│   │   └── modExampleApp.vba
+│   └── forms/
+│       └── frmExampleApp/
+│           ├── design.json      # Form layout: size, caption, controls
+│           └── code-behind.vba  # The form's event-handling code
+└── YourAppsFolder/        # Your applications go here
+    └── YourApp/
         ├── manifest.json
         ├── modules/
         └── forms/
 ```
 ## 🚀 **Quick Start**
-### **1. Setup VBA Builder**
+### **1. Setup VBA App Builder**
 1.  **Open any Office document** (Excel, Word, etc.) and save it as a macro-enabled file (e.g., `.docm` or `.xlsm`). This will be your build environment.
 2.  **Press `Alt+F11`** to open the VBA Editor.
-3.  **Insert → Module** and name it `modBuildSystem`.
-4.  **Copy the entire contents** of `modBuildSystem.bas` into the module.
-5.  **Insert → Module** and name it `modBuilderUtils`.
-6.  **Copy the entire contents** of `modBuilderUtils.bas` into the second module.
+3.  **Insert → Module** and name it `modAppBuilder`.
+4.  **Copy the entire contents** of `modAppBuilder.bas` into the module.
 ### **2. Enable Trust Center Settings**
 **CRITICAL**: You must allow programmatic access to the VBA project.
 1.  In your Office Application: **File → Options → Trust Center**.
 2.  **Trust Center Settings → Macro Settings**.
 3.  **✅ Check "Trust access to the VBA project object model"**.
 4.  **Restart the Office application**.
-### **3. Start Building! (Dead Simple)**
+### **3. Start Building! (Zero Configuration)**
 ```vba
 ' Open the Immediate Window (View -> Immediate Window or Ctrl+G) and run:
 
-' First time setup (opens folder picker)
-Call Initialize()
-
-' Build apps (shows menu, auto-setup if needed)
+' Build apps (browse for folder, select app)
 Call Build()
 
-' Optional: Direct build
+' Or build specific app directly
 Call BuildApplication("ExampleApp")
 
-' Optional: Check status
+' Optional: Configure auto-save
+Call ConfigureAutoSave()
+
+' Optional: Check version and commands
 Call ShowSystemStatus()
 ```
 ## 📋 **Application Configuration**
@@ -137,33 +134,43 @@ This file defines your application's components.
   "forms": "frmMyForm"
 }
 ```
-### **New Design.json Schema (v1.0)**
-Clean separation between form properties and controls.
+### **Design.json Schema (with Comments!)**
+Clean separation between form properties and controls, now with comment support.
 ```json
 {
+  // Form properties section
   "form": {
     "name": "frmMyApp",
     "caption": "My Application", 
     "width": 400,
     "height": 300,
-    "startUpPosition": 1
+    "startUpPosition": 1  // 0=Manual, 1=CenterOwner, 2=CenterScreen, 3=WindowsDefault
   },
+  // Controls array - add buttons, labels, etc.
   "controls": [
     {
       "name": "btnSubmit",
       "type": "CommandButton", 
       "caption": "Submit",
-      "left": 50, "top": 50, "width": 100, "height": 30
+      "left": 50, "top": 50, "width": 100, "height": 30,
+      // Optional font settings
+      "font": {
+        "name": "Arial",
+        "size": 10,
+        "bold": true,
+        "italic": false
+      }
     }
   ]
 }
 ```
 
-**🎯 Why the new schema?**
-- ✅ **No Conflicts**: Form width/height separate from control dimensions
-- ✅ **AI-Friendly**: Clear structure for code generation  
-- ✅ **Future-Proof**: Easy to add form-level properties
-- ✅ **Self-Documenting**: Obvious what belongs where
+**🎯 Enhanced Features:**
+- ✅ **JSON Comments**: Use // for single-line comments
+- ✅ **Font Support**: Customize control fonts
+- ✅ **Clear Structure**: Form properties separate from controls
+- ✅ **AI-Friendly**: Easy for code generation
+- ✅ **Error Reporting**: Get line numbers for JSON syntax errors
 ## 🎯 **The Direct VBA Object Strategy**
 After a successful build, your forms and modules exist as **native VBA objects**. You should always reference them directly in your code.
 ### ✅ **Recommended Approach**
@@ -183,20 +190,20 @@ frmMyForm.Caption = "New Title"
 - **Purpose**: A comprehensive template for developers and AI assistants.
 - **Features**: A fully annotated application demonstrating all VBA Build System patterns.
 - **Use Case**: Copy this structure when creating new applications.
-- **Location**: `src/ExampleApp/`
+- **Location**: `ExampleApp/` (at root level for easy access)
 ### **FundSelector** - Production Example
 - **Purpose**: A database-driven fund selection tool.
 - **Features**: Demonstrates Azure SQL connectivity and a professional UI.
 - **Use Case**: A real-world business application.
 ## 🔧 **System Commands**
 ```vba
-' 🎯 Essential (98% of use cases)
-Call Initialize()                    ' Setup/change source folder (folder picker)
-Call Build()                         ' Show menu, build selected app
+' 🎯 Essential Commands
+Call Build()                         ' Browse for folder, show menu, build selected app
+Call BuildApplication("AppName")     ' Browse for folder, build specific app
 
-' 🔧 Direct commands  
-Call BuildApplication("AppName")     ' Build specific app directly
-Call ShowSystemStatus()              ' Check current configuration
+' 🔧 Configuration & Info
+Call ConfigureAutoSave()             ' Toggle auto-save on/off
+Call ShowSystemStatus()              ' Display version and available commands
 
 ' 🔍 Diagnostics (if needed)
 Call ValidateTrustSettings()         ' Check VBA project access
@@ -227,8 +234,8 @@ Call ShowSystemStatus()
 Call ValidateTrustSettings()
 ' Step 3: Try building with menu
 Call Build()
-' Step 4: Re-setup if needed
-Call Initialize()
+' Step 4: Check auto-save settings
+Call ConfigureAutoSave()
 ```
 ## 🏆 **Benefits**
 ### **For Developers**
@@ -240,22 +247,30 @@ Call Initialize()
 -   **Standardization**: Consistent, repeatable builds and deployments.
 -   **Quality Control**: Automated build validation.
 -   **Maintainability**: Easier updates and bug fixes.
-### **For AI Assistants: Simplified Code Generation**
--   **Simple JSON Structures**: Easy for AI to generate `design.json` files.
--   **Direct Object References**: AI can generate code that uses `frmYourForm.Show` syntax, as the build process guarantees the form will exist.
--   **Modular & Reliable**: The two-module build system is well-organized with clear separation of concerns.
+### **For AI Assistants: Enhanced Code Generation**
+-   **Comment-Friendly JSON**: Generate design files with helpful // comments.
+-   **Better Error Messages**: Line numbers in JSON errors make debugging easier.
+-   **Progress Tracking**: Monitor build progress programmatically.
+-   **Single Module**: Everything in one file - simpler to understand and generate for.
 ---
 ## 🎉 **Ready for Modern VBA Development?**
-The **simplified v1.0 system** is perfect for everyone - from beginners to AI assistants. Just 2 commands to get started!
+The **v2.1 system** brings zero-configuration simplicity with enhanced user experience!
 
 ```vba
-' Dead simple workflow:
-Call Initialize()    ' Pick your source folder (one-time)
-Call Build()         ' Build your apps (menu-driven)
+' Ultra-simple workflow:
+Call Build()         ' Browse, select, build - all in one!
 ```
 
+**What's New in v2.1:**
+- 🚀 **Zero Configuration** - No setup, no stored paths
+- 📊 **Progress Tracking** - See build progress in real-time
+- 💬 **JSON Comments** - Add documentation to your config files
+- 🔍 **Better Errors** - Helpful messages with recovery suggestions
+- 💾 **Auto-Save Option** - Save project after successful builds
+- 📦 **Single Module** - Everything in one easy-to-share file
+
 **Perfect for:**
-- 🤖 **AI Code Generation** - Clean schema and simple commands
-- 👨‍💻 **Developers** - Modern workflow with version control
-- 🏢 **Organizations** - Standardized, repeatable builds
-- 📚 **Learning** - Clear patterns and comprehensive examples
+- 🤖 **AI Code Generation** - Enhanced JSON support and error handling
+- 👨‍💻 **Developers** - Modern workflow with better UX
+- 🏢 **Organizations** - Zero-config deployment
+- 📚 **Learning** - Clearer error messages and progress feedback
