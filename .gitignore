@@ -1,6 +1,9 @@
 # Exclude FundSelector folder from git tracking
 src/FundSelector/
 
+# Exclude sensitive files
+AppBuilder.docm
+
 # Common VBA/Office files to ignore
 *.tmp
 *.log
