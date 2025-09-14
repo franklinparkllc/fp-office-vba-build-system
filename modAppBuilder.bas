@@ -2,7 +2,7 @@ Attribute VB_Name = "modAppBuilder"
 ' =====================================================================================
 ' VBA APPLICATION BUILDER - UNIFIED BUILD SYSTEM
 ' =====================================================================================
-' Version: 0.2.0 - Direct app folder selection
+' Version: 0.3.0 - Direct app folder selection
 '
 ' QUICK START:
 ' 1. Import this module into your VBA project
@@ -62,16 +62,12 @@ Public Sub BuildApplication(Optional appPath As String = "")
         End If
     End If
     
-    UpdateProgress "Validating application path..."
-    
     ' Check if manifest.json exists in the selected folder
     If Dir(appPath & "\manifest.json") = "" Then
         ShowError "BuildApplication", 0, "No manifest.json found in: " & appPath, _
                   "Please select a folder containing manifest.json"
         Exit Sub
     End If
-    
-    UpdateProgress "Loading manifest..."
     
     Dim manifest As Object
     Set manifest = LoadJSON(appPath & "\manifest.json")
@@ -81,7 +77,7 @@ Public Sub BuildApplication(Optional appPath As String = "")
         Exit Sub
     End If
     
-    ' Calculate total steps for progress
+    ' Calculate total steps for progress (before any UpdateProgress calls)
     CalculateBuildSteps manifest
     
     ' Get app name from manifest
@@ -92,6 +88,10 @@ Public Sub BuildApplication(Optional appPath As String = "")
     MsgBox "Building: " & appName & vbCrLf & _
            "Source: " & appPath & vbCrLf & vbCrLf & _
            "Check Immediate window for progress...", vbInformation
+    
+    ' Start progress tracking
+    UpdateProgress "Validating application path..."
+    UpdateProgress "Loading manifest..."
     
     ' Process references from manifest (if any)
     UpdateProgress "Processing references..."
@@ -209,7 +209,7 @@ End Sub
 
 ' Calculate total build steps from manifest
 Private Sub CalculateBuildSteps(manifest As Object)
-    totalSteps = 1 ' Initial validation
+    totalSteps = 2 ' Initial validation and loading manifest
     
     If manifest.Exists("references") And manifest("references") <> "" Then
         totalSteps = totalSteps + 1
