@@ -1,0 +1,23 @@
+# Exclude FundSelector folder from git tracking
+src/FundSelector/
+
+# Common VBA/Office files to ignore
+*.tmp
+*.log
+*.bak
+*~
+
+# Windows specific
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Office temporary files
+~$*
+*.docx
+*.xlsx
+*.pptx
+
+# Build artifacts
+*.exe
+*.dll
