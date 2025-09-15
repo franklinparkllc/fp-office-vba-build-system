@@ -2,7 +2,7 @@ Attribute VB_Name = "modAppBuilder"
 ' =====================================================================================
 ' VBA APPLICATION BUILDER - UNIFIED BUILD SYSTEM
 ' =====================================================================================
-' Version: 0.3.0 - Direct app folder selection
+' Version: 2.3.0 - Robust state management
 '
 ' QUICK START:
 ' 1. Import this module into your VBA project
@@ -1176,11 +1176,26 @@ Public Function GetVBProject() As Object
     Set GetVBProject = Application.VBE.ActiveVBProject
 End Function
 
-' Remove a component if it exists in the project
+' Remove a component using a robust rename-then-delete strategy to avoid VBE state issues
 Public Sub RemoveComponent(vbProj As Object, componentName As String)
     On Error Resume Next
-    Dim comp As Object: Set comp = vbProj.VBComponents(componentName)
-    If Not comp Is Nothing Then vbProj.VBComponents.Remove comp
+    Dim comp As Object
+    Set comp = vbProj.VBComponents(componentName)
+
+    If Not comp Is Nothing Then
+        Dim tempName As String
+        tempName = componentName & "_ToDelete"
+
+        ' Clean up any leftover temp component from a failed previous build
+        vbProj.VBComponents.Remove vbProj.VBComponents(tempName)
+
+        ' Rename to a temporary name before removing to avoid VBE state issues
+        comp.Name = tempName
+        vbProj.VBComponents.Remove vbProj.VBComponents(tempName)
+    End If
+
+    ' Reset error handling to prevent side effects in the calling function
+    On Error GoTo 0
 End Sub
 
 ' Force save of the host document so recent VBE changes persist
@@ -1236,7 +1251,7 @@ End Function
 Public Sub ShowSystemStatus()
     Dim msg As String
     msg = "=== VBA App Builder Status ===" & vbCrLf & vbCrLf
-    msg = msg & "Version: 2.2.0 (Direct App Folder Selection)" & vbCrLf
+    msg = msg & "Version: 2.3.0 (Robust State Management)" & vbCrLf
     msg = msg & "Auto-Save: " & IIf(GetAutoSaveEnabled(), "Enabled", "Disabled") & vbCrLf & vbCrLf
     
     msg = msg & "Commands:" & vbCrLf

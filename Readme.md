@@ -47,7 +47,7 @@ Set comp = vbProj.VBComponents.Import(filePath)
 ' Add event handlers and logic to a form
 formComp.CodeModule.AddFromString codeContent
 ```
-## 🏗️ **System Architecture (v2.2 - Direct App Folder Selection)**
+## 🏗️ **System Architecture (v2.3 - Robust State Management)**
 **Single-module design**: Everything you need in one file with zero configuration.
 
 ### **👤 User Experience - Just 1 Main Function!**
@@ -83,7 +83,7 @@ Call BuildApplication("C:\Path\To\App")  ' Build specific app folder directly
 ## 📁 **Project Structure**
 ```
 fp-office-vba-build-system/
-├── modAppBuilder.bas      # Complete build system (v2.2)
+├── modAppBuilder.bas      # Complete build system (v2.3)
 ├── ExampleApp/            # Reference application (at root for easy access)
 │   ├── manifest.json      # App config: name, modules, forms
 │   ├── modules/
@@ -260,14 +260,15 @@ Call ConfigureAutoSave()
 -   **Single Module**: Everything in one file - simpler to understand and generate for.
 ---
 ## 🎉 **Ready for Modern VBA Development?**
-The **v2.2 system** brings direct app folder selection with zero configuration!
+The **v2.3 system** brings robust state management and zero configuration!
 
 ```vba
 ' Ultra-simple workflow:
 Call Build()         ' Browse to app folder, build - done!
 ```
 
-**What's New in v2.2:**
+**What's New in v2.3:**
+- 🛠️ **Robust State Management** - Fixes incremental form update issues
 - 📁 **Direct App Folder Selection** - Select the app folder, not parent folders
 - 🚀 **Zero Configuration** - No setup, no stored paths
 - 📊 **Progress Tracking** - See build progress in real-time

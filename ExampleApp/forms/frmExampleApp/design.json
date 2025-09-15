@@ -24,7 +24,7 @@
     {
       "name": "btnHello",
       "type": "CommandButton",
-      "caption": "Say Hello",
+      "caption": "Say Hi!",
       "left": 30,
       "top": 60,
       "width": 120,
